@@ -14,5 +14,7 @@ Those env. variables are used in `.csproj` and `launch.json`.
 ## Usage
 Syntax: `/lz [radius from player position] [string which is searched in block path]`
 
+Set radius `<0` to clear all markings.
+
 ## Acknowledgement
 Base project setup from `copygirl` (https://github.com/copygirl/howto-example-mod), thanks to You!

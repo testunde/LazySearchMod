@@ -68,6 +68,12 @@ namespace LazySearch
                             msgPlayer("Syntax is: /lz radius blockString");
                             return;
                         }
+                        if (radius < 0)
+                        {
+                            msgPlayer("Clearing highligts.");
+                            BlockPosRenderer.clearBlockPosList();
+                            return;
+                        }
                         EntityPlayer byEntity = player.Entity;
                         BlockPos playerPos = byEntity.Pos.AsBlockPos;
                         spawnPos = new BlockPos(player.GetSpawnPosition(false).XYZInt);
