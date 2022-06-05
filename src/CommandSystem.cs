@@ -10,20 +10,24 @@ namespace LazySearch
     {
         ICoreClientAPI capi = null;
         ICoreServerAPI sapi = null;
+        void msgPlayer(string msg)
+        {
+            sapi?.BroadcastMessageToAllGroups("|LazySearch|: " + msg, EnumChatType.OwnMessage);
+        }
         void printClient(string msg)
         {
             if (LazySearchMod.logDebug)
             {
-                capi?.Logger.Warning("|TESTYC|: " + msg);
-                capi?.ShowChatMessage("|TESTYC|: " + msg);
+                capi?.Logger.Debug("|LazySearch|: " + msg);
+                capi?.ShowChatMessage("|LazySearch|: " + msg);
             }
         }
         void printServer(string msg)
         {
             if (LazySearchMod.logDebug)
             {
-                sapi?.Logger.Warning("|TESTYC|: " + msg);
-                sapi?.BroadcastMessageToAllGroups("|TESTYC|: " + msg, EnumChatType.OwnMessage);
+                sapi?.Logger.Debug("|LazySearch|: " + msg);
+                sapi?.BroadcastMessageToAllGroups("|LazySearch|: " + msg, EnumChatType.OwnMessage);
             }
         }
 
@@ -61,7 +65,7 @@ namespace LazySearch
                         int radius = 20;
                         if (args.Length != 2 || !int.TryParse(args[0], out radius))
                         {
-                            printServer("Syntax is: /lz radius blockString");
+                            msgPlayer("Syntax is: /lz radius blockString");
                             return;
                         }
                         EntityPlayer byEntity = player.Entity;
@@ -82,6 +86,7 @@ namespace LazySearch
                         {
                             if (blocksFound >= maxBlocksToUncover)
                             {
+                                msgPlayer("Found " + maxBlocksToUncover + " blocks with '" + args[1] + "'.");
                                 return;
                             }
 
@@ -97,6 +102,7 @@ namespace LazySearch
                         }, true);
 
                         printServer("=&gt; Lazy search done.");
+                        msgPlayer("Found " + blocksFound + " blocks with '" + args[1] + "'.");
                     }, Privilege.chat);
         }
         public override bool ShouldLoad(EnumAppSide side)

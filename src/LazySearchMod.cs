@@ -16,20 +16,24 @@ namespace LazySearch
         public static bool logDebug = false;
         ICoreClientAPI capi = null;
         ICoreServerAPI sapi = null;
+        void msgPlayer(string msg)
+        {
+            capi?.ShowChatMessage("|LazySearch|: " + msg);
+        }
         void printClient(string msg)
         {
             if (logDebug)
             {
-                capi?.Logger.Warning("|TESTYC|: " + msg);
-                capi?.ShowChatMessage("|TESTYC|: " + msg);
+                capi?.Logger.Debug("|LazySearch|: " + msg);
+                capi?.ShowChatMessage("|LazySearch|: " + msg);
             }
         }
         void printServer(string msg)
         {
             if (logDebug)
             {
-                sapi?.Logger.Warning("|TESTYC|: " + msg);
-                sapi?.BroadcastMessageToAllGroups("|TESTYC|: " + msg, EnumChatType.OwnMessage);
+                sapi?.Logger.Debug("|LazySearch|: " + msg);
+                sapi?.BroadcastMessageToAllGroups("|LazySearch|: " + msg, EnumChatType.OwnMessage);
             }
         }
 
