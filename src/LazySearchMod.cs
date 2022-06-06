@@ -3,7 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 
 [assembly: ModInfo("LazySearch",
-    Version = "1.1.0",
+    Version = "1.2.0",
     // Side = "Client",
     Description = "A lazy approach to search for blocks in the World",
     Website = "https://github.com/testunde/LazySearchMod",

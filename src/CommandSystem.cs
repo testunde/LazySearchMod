@@ -60,7 +60,7 @@ namespace LazySearch
             api.RegisterCommand("lz_mb", "get/set maximal blocks to highlight", "[optional:maxBlocks]",
                 (IServerPlayer player, int groupId, CmdArgs args) =>
                 {
-                    int maxBlocks = maxBlocksToUncover; // actual initialization-value does not matter
+                    int maxBlocks = 0; // actual initialization-value does not matter
                     if (args.Length > 1 || (args.Length == 1 && !int.TryParse(args[0], out maxBlocks)))
                     {
                         msgPlayer("Syntax is: /lz_mb optional:maxBlocks");
@@ -71,15 +71,20 @@ namespace LazySearch
                         msgPlayer("current 'maxBlocks': " + maxBlocksToUncover);
                         return;
                     }
+                    if (maxBlocks <= 0)
+                    {
+                        msgPlayer("Argument 'maxBlocks' has to be a non-zero positive integer.");
+                        return;
+                    }
 
+                    msgPlayer("set 'maxBlocks' from " + maxBlocksToUncover + " to: " + maxBlocks);
                     maxBlocksToUncover = maxBlocks;
-                    msgPlayer("set 'maxBlocks' to: " + maxBlocks);
                 }, Privilege.chat);
 
             api.RegisterCommand("lz", "searches for blocks in the world", "[radius from player position] [string which is searched in block path]",
                 (IServerPlayer player, int groupId, CmdArgs args) =>
                     {
-                        int radius = 20;
+                        int radius = 20; // actual initialization-value does not matter
                         if (args.Length != 2 || !int.TryParse(args[0], out radius))
                         {
                             msgPlayer("Syntax is: /lz radius blockString");
@@ -102,6 +107,7 @@ namespace LazySearch
                         BlockPos maxPos = playerPos + radius;
 
                         int blocksFound = 0;
+                        float searchedRadius = 0.0f;
                         BlockPosRenderer.clearBlockPosList();
 
                         api.World.GetBlockAccessor(false, false, false).WalkBlocks(minPos, maxPos,
@@ -113,20 +119,31 @@ namespace LazySearch
                             }
                             else
                             {
-                                string bName = b.Code.GetName();
-                                if (bName.Contains(args[1]))
+                                float tempRadius = bp.DistanceTo(playerPos);
+                                if (tempRadius <= ((float)radius))
                                 {
-                                    printServer("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
-                                    blocksFound++;
+                                    searchedRadius = tempRadius;
+                                    string bName = b.Code.GetName();
+                                    if (bName.Contains(args[1]))
+                                    {
+                                        printServer("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
+                                        blocksFound++;
 
-                                    // call BlockPosRenderer
-                                    BlockPosRenderer.plotCoord(bp.Copy());
+                                        // call BlockPosRenderer
+                                        BlockPosRenderer.plotCoord(bp.Copy());
+                                    }
+                                }
+                                else
+                                {
+                                    // skip block in greater distance to player than given radius
+                                    // (as search volume is cube with sidelength 1+2*radius centered at player)
                                 }
                             }
                         }, true);
 
                         printServer("=&gt; Lazy search done.");
-                        msgPlayer("Found " + blocksFound + " blocks with '" + args[1] + "'.");
+                        string maxAmountHit = (blocksFound < maxBlocksToUncover) ? "" : " (limited by maximal block highlight number, check /lz_mb to change)";
+                        msgPlayer("Found " + blocksFound + " blocks with '" + args[1] + "'. Max Search radius: " + searchedRadius + "" + maxAmountHit);
                     }, Privilege.chat);
         }
         public override bool ShouldLoad(EnumAppSide side)
