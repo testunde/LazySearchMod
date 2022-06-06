@@ -12,9 +12,10 @@ Those env. variables are used in `.csproj` and `launch.json`.
 - `VINTAGE_STORY_DATA`: points to the user data directory (thus i.e. `$HOME/.config/VintagestoryData` or `%AppData%\VintagestoryData`)
 
 ## Usage
-Syntax: `/lz [radius from player position] [string which is searched in block path]`
+Syntax: `/lz [radius from player position] [string which is searched in block path]` - searches for blocks in the world; set radius `< 0` to clear all markings
 
-Set radius `<0` to clear all markings.
+Syntax: `/lz_mb [optional:maxBlocks]` - get/set maximal blocks to highlight
+
 
 ## Acknowledgement
 Base project setup from `copygirl` (https://github.com/copygirl/howto-example-mod), thanks to You!

@@ -32,9 +32,7 @@ namespace LazySearch
         }
 
         public static int maxBlocksToUncover
-        {
-            get { return 100; }
-        }
+        { get; set; } = 100;
 
         static BlockPos spawnPos = new BlockPos(0, 0, 0);
         static BlockPos getGameBlockPos(BlockPos worldBP)
@@ -58,6 +56,25 @@ namespace LazySearch
         {
             base.StartServerSide(api);
             sapi = api;
+
+            api.RegisterCommand("lz_mb", "get/set maximal blocks to highlight", "",
+                (IServerPlayer player, int groupId, CmdArgs args) =>
+                {
+                    int maxBlocks = maxBlocksToUncover; // actual initialization-value does not matter
+                    if (args.Length > 1 || (args.Length == 1 && !int.TryParse(args[0], out maxBlocks)))
+                    {
+                        msgPlayer("Syntax is: /lz_mb optional:maxBlocks");
+                        return;
+                    }
+                    if (args.Length == 0)
+                    {
+                        msgPlayer("current 'maxBlocks': " + maxBlocksToUncover);
+                        return;
+                    }
+
+                    maxBlocksToUncover = maxBlocks;
+                    msgPlayer("set 'maxBlocks' to: " + maxBlocks);
+                }, Privilege.chat);
 
             api.RegisterCommand("lz", "searches for blocks in the world", "",
                 (IServerPlayer player, int groupId, CmdArgs args) =>
@@ -92,18 +109,19 @@ namespace LazySearch
                         {
                             if (blocksFound >= maxBlocksToUncover)
                             {
-                                msgPlayer("Found " + maxBlocksToUncover + " blocks with '" + args[1] + "'.");
-                                return;
+                                // already hit the maximum, just skip the rest
                             }
-
-                            string bName = b.Code.GetName();
-                            if (bName.Contains(args[1]))
+                            else
                             {
-                                printServer("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
-                                blocksFound++;
+                                string bName = b.Code.GetName();
+                                if (bName.Contains(args[1]))
+                                {
+                                    printServer("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
+                                    blocksFound++;
 
-                                // call BlockPosRenderer
-                                BlockPosRenderer.plotCoord(bp.Copy());
+                                    // call BlockPosRenderer
+                                    BlockPosRenderer.plotCoord(bp.Copy());
+                                }
                             }
                         }, true);
 
