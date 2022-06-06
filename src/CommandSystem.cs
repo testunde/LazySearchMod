@@ -57,7 +57,7 @@ namespace LazySearch
             base.StartServerSide(api);
             sapi = api;
 
-            api.RegisterCommand("lz_mb", "get/set maximal blocks to highlight", "",
+            api.RegisterCommand("lz_mb", "get/set maximal blocks to highlight", "[optional:maxBlocks]",
                 (IServerPlayer player, int groupId, CmdArgs args) =>
                 {
                     int maxBlocks = maxBlocksToUncover; // actual initialization-value does not matter
@@ -76,7 +76,7 @@ namespace LazySearch
                     msgPlayer("set 'maxBlocks' to: " + maxBlocks);
                 }, Privilege.chat);
 
-            api.RegisterCommand("lz", "searches for blocks in the world", "",
+            api.RegisterCommand("lz", "searches for blocks in the world", "[radius from player position] [string which is searched in block path]",
                 (IServerPlayer player, int groupId, CmdArgs args) =>
                     {
                         int radius = 20;
