@@ -92,7 +92,7 @@ namespace LazySearch
                         }
                         if (radius < 0)
                         {
-                            msgPlayer("Clearing highligts.");
+                            msgPlayer("Clearing highlights.");
                             BlockPosRenderer.clearBlockPosList();
                             return;
                         }
