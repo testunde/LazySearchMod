@@ -2,7 +2,7 @@
 	"type": "code",
 	"name": "LazySearch",
 	"modid": "lazysearchmod",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	
 	"description" : "A lazy approach to search for blocks in the World",
 	"website": "https://github.com/testunde/LazySearchMod",

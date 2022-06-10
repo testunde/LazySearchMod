@@ -57,7 +57,7 @@ namespace LazySearch
 
             // create copy of list as otherwise it could be modified during iteration
             List<BlockPos> bPosList_local = new List<BlockPos>(bPosList);
-            foreach (BlockPos bp in bPosList)
+            foreach (BlockPos bp in bPosList_local)
             {
                 if (bp != null)
                 {
