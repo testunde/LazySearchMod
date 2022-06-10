@@ -96,7 +96,7 @@ namespace LazySearch
             // rending is based on player position, to translate render target-position from world frame into render frame
             Vec3f posDiff = bPos.ToVec3f() - pEnt.Pos.XYZFloat;
             Mat4f.Translate(modelMat_h, modelMat_h, posDiff.X, posDiff.Y, posDiff.Z);
-            Mat4f.Translate(modelMat_h, modelMat_h, 0.5f, 0.5f, 0.5f); // offset by 0.5 since block coordates are off-set
+            Mat4f.Translate(modelMat_h, modelMat_h, 0.5f, 0.5f, 0.5f); // offset by 0.5 since block coordinates are off-set
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(bPos.X, bPos.Y, bPos.Z);
             // no lighting effects
