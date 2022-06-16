@@ -19,7 +19,7 @@
 	</ItemGroup>
 	
 	<ItemGroup Condition="'$(Configuration)' == 'Release'">
-		<None Include="UNLICENSE" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="LICENSE" CopyToOutputDirectory="PreserveNewest" />
 		<None Include="resources/**">
 			<Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -27,6 +27,8 @@
 	</ItemGroup>
 	
 	<Target Name="Package" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
+        <Delete Files="$(TargetDir)$(TargetName).pdb" />
+        <Delete Files="$(TargetDir)assets/.gitkeep" />
 		<ZipDirectory DestinationFile="bin/$(TargetName).zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
 	</Target>
 </Project>
