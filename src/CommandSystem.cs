@@ -9,10 +9,9 @@ namespace LazySearch
     public class CommandSystem : ModSystem
     {
         ICoreClientAPI capi = null;
-        ICoreServerAPI sapi = null;
         void msgPlayer(string msg)
         {
-            sapi?.BroadcastMessageToAllGroups("|LazySearch|: " + msg, EnumChatType.OwnMessage);
+            capi?.ShowChatMessage("|LazySearch|: " + msg);
         }
         void printClient(string msg)
         {
@@ -20,14 +19,6 @@ namespace LazySearch
             {
                 capi?.Logger.Debug("|LazySearch|: " + msg);
                 capi?.ShowChatMessage("|LazySearch|: " + msg);
-            }
-        }
-        void printServer(string msg)
-        {
-            if (LazySearchMod.logDebug)
-            {
-                sapi?.Logger.Debug("|LazySearch|: " + msg);
-                sapi?.BroadcastMessageToAllGroups("|LazySearch|: " + msg, EnumChatType.OwnMessage);
             }
         }
 
@@ -50,20 +41,14 @@ namespace LazySearch
         {
             base.StartClientSide(api);
             capi = api;
-        }
-
-        public override void StartServerSide(ICoreServerAPI api)
-        {
-            base.StartServerSide(api);
-            sapi = api;
 
             api.RegisterCommand("lz_mb", "get/set maximal blocks to highlight", "[optional:maxBlocks]",
-                (IServerPlayer player, int groupId, CmdArgs args) =>
+                (int groupId, CmdArgs args) =>
                 {
                     int maxBlocks = 0; // actual initialization-value does not matter
                     if (args.Length > 1 || (args.Length == 1 && !int.TryParse(args[0], out maxBlocks)))
                     {
-                        msgPlayer("Syntax is: /lz_mb optional:maxBlocks");
+                        msgPlayer("Syntax is: .lz_mb optional:maxBlocks");
                         return;
                     }
                     if (args.Length == 0)
@@ -79,15 +64,15 @@ namespace LazySearch
 
                     msgPlayer("set 'maxBlocks' from " + maxBlocksToUncover + " to: " + maxBlocks);
                     maxBlocksToUncover = maxBlocks;
-                }, Privilege.chat);
+                });
 
             api.RegisterCommand("lz", "searches for blocks in the world", "[radius from player position] [string which is searched in block path]",
-                (IServerPlayer player, int groupId, CmdArgs args) =>
+                (int groupId, CmdArgs args) =>
                     {
                         int radius = 20; // actual initialization-value does not matter
                         if (args.Length != 2 || !int.TryParse(args[0], out radius))
                         {
-                            msgPlayer("Syntax is: /lz radius blockString");
+                            msgPlayer("Syntax is: .lz radius blockString");
                             return;
                         }
                         if (radius < 0)
@@ -96,12 +81,12 @@ namespace LazySearch
                             BlockPosRenderer.clearBlockPosList();
                             return;
                         }
-                        EntityPlayer byEntity = player.Entity;
+                        EntityPlayer byEntity = capi.World.Player.Entity;
                         BlockPos playerPos = byEntity.Pos.AsBlockPos;
-                        spawnPos = new BlockPos(player.GetSpawnPosition(false).XYZInt);
+                        // spawnPos = new BlockPos(player.GetSpawnPosition(false).XYZInt);
 
-                        printServer("=&gt; Starting lazy search...");
-                        printServer("Player Pos: " + getGameBlockPos(playerPos).ToString());
+                        printClient("=&gt; Starting lazy search...");
+                        printClient("Player Pos: " + getGameBlockPos(playerPos).ToString());
 
                         BlockPos minPos = playerPos - radius;
                         BlockPos maxPos = playerPos + radius;
@@ -126,7 +111,7 @@ namespace LazySearch
                                     string bName = b.Code.GetName();
                                     if (bName.Contains(args[1]))
                                     {
-                                        printServer("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
+                                        printClient("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
                                         blocksFound++;
 
                                         // call BlockPosRenderer
@@ -141,14 +126,15 @@ namespace LazySearch
                             }
                         }, true);
 
-                        printServer("=&gt; Lazy search done.");
-                        string maxAmountHit = (blocksFound < maxBlocksToUncover) ? "" : " (limited by maximal block highlight number, check /lz_mb to change)";
+                        printClient("=&gt; Lazy search done.");
+                        string maxAmountHit = (blocksFound < maxBlocksToUncover) ? "" : " (limited by maximal block highlight number, check .lz_mb to change)";
                         msgPlayer("Found " + blocksFound + " blocks with '" + args[1] + "'. Max Search radius: " + searchedRadius + "" + maxAmountHit);
-                    }, Privilege.chat);
+                    });
         }
+
         public override bool ShouldLoad(EnumAppSide side)
         {
-            return side == EnumAppSide.Server;
+            return side == EnumAppSide.Client;
         }
     }
 }

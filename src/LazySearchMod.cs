@@ -3,7 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 
 [assembly: ModInfo("LazySearch",
-    Version = "1.2.1",
+    Version = "1.2.2",
     // Side = "Client",
     Description = "A lazy approach to search for blocks in the World",
     Website = "https://github.com/testunde/LazySearchMod",
@@ -15,7 +15,6 @@ namespace LazySearch
     {
         public static bool logDebug = false;
         ICoreClientAPI capi = null;
-        ICoreServerAPI sapi = null;
         void msgPlayer(string msg)
         {
             capi?.ShowChatMessage("|LazySearch|: " + msg);
@@ -26,14 +25,6 @@ namespace LazySearch
             {
                 capi?.Logger.Debug("|LazySearch|: " + msg);
                 capi?.ShowChatMessage("|LazySearch|: " + msg);
-            }
-        }
-        void printServer(string msg)
-        {
-            if (logDebug)
-            {
-                sapi?.Logger.Debug("|LazySearch|: " + msg);
-                sapi?.BroadcastMessageToAllGroups("|LazySearch|: " + msg, EnumChatType.OwnMessage);
             }
         }
 
@@ -53,12 +44,6 @@ namespace LazySearch
             capi = api;
 
             printClient("LazySearch Mod started");
-        }
-
-        public override void StartServerSide(ICoreServerAPI api)
-        {
-            base.StartServerSide(api);
-            sapi = api;
         }
     }
 }
