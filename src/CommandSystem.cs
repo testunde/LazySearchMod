@@ -73,7 +73,7 @@ namespace LazySearch
                 (int groupId, CmdArgs args) =>
                     {
                         int radius = 20; // actual initialization-value does not matter
-                        if (args.Length != 2 || !int.TryParse(args[0], out radius))
+                        if (args.Length < 1 || !int.TryParse(args[0], out radius) || (args.Length != 2 && radius >= 0))
                         {
                             msgPlayer("Syntax is: .lz radius blockString");
                             return;
