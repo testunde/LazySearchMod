@@ -64,6 +64,9 @@ namespace LazySearch
 
                     msgPlayer("set 'maxBlocks' from " + maxBlocksToUncover + " to: " + maxBlocks);
                     maxBlocksToUncover = maxBlocks;
+
+                    // remove already visible block highlights but are over new limit
+                    BlockPosRenderer.delAllBlockPositionsButFirstN(maxBlocks);
                 });
 
             api.RegisterCommand("lz", "searches for blocks in the world", "[radius from player position] [string which is searched in block path]",

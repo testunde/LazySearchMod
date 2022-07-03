@@ -49,6 +49,14 @@ namespace LazySearch
             bPosList.Clear();
         }
 
+        public static void delAllBlockPositionsButFirstN(int n)
+        {
+            if (bPosList.Count <= n) return; // nothing to do
+
+            int nToDelete = bPosList.Count - n;
+            bPosList.RemoveRange(n, nToDelete);
+        }
+
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
             IClientPlayer plr = capi.World.Player;
