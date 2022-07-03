@@ -86,7 +86,6 @@ namespace LazySearch
                         }
                         EntityPlayer byEntity = capi.World.Player.Entity;
                         BlockPos playerPos = byEntity.Pos.AsBlockPos;
-                        // spawnPos = new BlockPos(player.GetSpawnPosition(false).XYZInt);
 
                         printClient("=&gt; Starting lazy search...");
                         printClient("Player Pos: " + getGameBlockPos(playerPos).ToString());
