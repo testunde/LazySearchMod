@@ -98,8 +98,9 @@ namespace LazySearch
                         BlockPosRenderer.clearBlockPosList();
 
                         api.World.GetBlockAccessor(false, false, false).WalkBlocks(minPos, maxPos,
-                        (Block b, BlockPos bp) =>
+                        (Block b, int x, int y, int z) =>
                         {
+                            BlockPos bp = new BlockPos(x, y, z);
                             if (blocksFound >= maxBlocksToUncover)
                             {
                                 // already hit the maximum, just skip the rest
