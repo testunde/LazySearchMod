@@ -97,37 +97,59 @@ namespace LazySearch
                         float searchedRadius = 0.0f;
                         BlockPosRenderer.clearBlockPosList();
 
-                        api.World.GetBlockAccessor(false, false, false).WalkBlocks(minPos, maxPos,
-                        (Block b, int x, int y, int z) =>
-                        {
-                            BlockPos bp = new BlockPos(x, y, z);
-                            if (blocksFound >= maxBlocksToUncover)
-                            {
-                                // already hit the maximum, just skip the rest
-                            }
-                            else
-                            {
-                                float tempRadius = bp.DistanceTo(playerPos);
-                                if (tempRadius <= ((float)radius))
-                                {
-                                    searchedRadius = tempRadius;
-                                    string bName = b.Code.GetName();
-                                    if (bName.Contains(args[1]))
-                                    {
-                                        printClient("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
-                                        blocksFound++;
+                        IBlockAccessor bacc = api.World.GetBlockAccessor(false, false, false);
+                        BlockPos bp;
+                        float tempRadius;
+                        Block b;
+                        string bName;
+                        float radius_f = (float)radius;
+                        bool valid_block;
+                        int x, y, z;
 
-                                        // call BlockPosRenderer
-                                        BlockPosRenderer.plotCoord(bp.Copy());
+                        for (int s = 0; s <= radius; s++) // s="shell"
+                        {
+                            for (x = -s; x <= +s; x++)
+                            {
+                                for (y = -s; y <= +s; y++)
+                                {
+                                    for (z = -s; z <= +s; z++)
+                                    {
+                                        valid_block = (x == -s || x == +s) || (y == -s || y == +s) || (z == -s || z == +s);  // any on shell
+                                        if (valid_block)
+                                        {
+                                            if (blocksFound >= maxBlocksToUncover)
+                                            {
+                                                // already hit the maximum, just stop
+                                                goto endQuadrupleLoop; // sry for using goto x)
+                                            }
+                                            else
+                                            {
+                                                bp = (new BlockPos(x, y, z)) + playerPos;
+                                                tempRadius = bp.DistanceTo(playerPos);
+                                                if (tempRadius > radius_f)
+                                                {
+                                                    // skip block in greater distance to player than given radius
+                                                    // (as search volume is cube with sidelength 1+2*radius centered at player)
+                                                    continue;
+                                                }
+                                                searchedRadius = tempRadius;
+                                                b = bacc.GetBlock(bp);
+                                                bName = b.Code.GetName();
+                                                if (bName.Contains(args[1]))
+                                                {
+                                                    printClient("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
+                                                    blocksFound++;
+
+                                                    // call BlockPosRenderer
+                                                    BlockPosRenderer.plotCoord(bp.Copy());
+                                                }
+                                            }
+                                        }
                                     }
                                 }
-                                else
-                                {
-                                    // skip block in greater distance to player than given radius
-                                    // (as search volume is cube with sidelength 1+2*radius centered at player)
-                                }
                             }
-                        }, true);
+                        }
+                    endQuadrupleLoop:
 
                         printClient("=&gt; Lazy search done.");
                         string maxAmountHit = (blocksFound < maxBlocksToUncover) ? "" : " (limited by maximal block highlight number, check .lz_mb to change)";
