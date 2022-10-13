@@ -29,6 +29,6 @@
 	<Target Name="Package" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
         <Delete Files="$(TargetDir)$(TargetName).pdb" />
         <Delete Files="$(TargetDir)assets/.gitkeep" />
-		<ZipDirectory DestinationFile="bin/$(TargetName).zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
+		<ZipDirectory DestinationFile="bin/$(TargetName)_v1.2.5_v1.17.8.zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
 	</Target>
 </Project>

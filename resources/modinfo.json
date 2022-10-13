@@ -2,13 +2,13 @@
 	"type": "code",
 	"name": "LazySearch",
 	"modid": "lazysearchmod",
-	"version": "1.2.4",
+	"version": "1.2.5",
 	
 	"description" : "A lazy approach to search for blocks in the World",
 	"website": "https://github.com/testunde/LazySearchMod",
 	"authors": [ "TeStUnDe" ],
 	
 	"dependencies": {
-		"game": "1.17.4"
+		"game": "1.17.8"
 	}
 }
