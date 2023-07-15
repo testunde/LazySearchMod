@@ -23,4 +23,4 @@ Base project setup from `copygirl` (https://github.com/copygirl/howto-example-mo
 
 ## Known Issues
 - may draw over chatbox, in-world huds (drawn over blocks) and inventories if standing too near (as they appear to be not rendered in the dedicated "GUI" rendering step)
-- may freeze the game if dearch radius is too high as search is done in main thread
+- may freeze the game if search radius is too high as search is done in main thread
