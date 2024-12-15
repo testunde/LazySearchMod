@@ -10,7 +10,7 @@ namespace LazySearch
     {
         ICoreClientAPI capi = null;
 
-        string lsMsg(string msg) { return "|LazySearch|: " + msg; }
+        public string lsMsg(string msg) { return "|LazySearch|: " + msg; }
 
         void printClient(string msg)
         {
@@ -45,34 +45,35 @@ namespace LazySearch
 
         private TextCommandResult CmdMaximalBlocks(TextCommandCallingArgs args)
         {
-            int maxBlocks = 0; // actual initialization-value does not matter
-            if (args.ArgCount > 1 || (args.ArgCount == 1 && !int.TryParse(args[0].ToString(), out maxBlocks)))
+            if (args.ArgCount > 1)
             {
                 return TextCommandResult.Success(lsMsg("Syntax is: .lz_mb [maxBlocks]"));
             }
-            if (args.ArgCount == 0)
+            if (args.ArgCount == 0 || args.Parsers[0].IsMissing)
             {
                 return TextCommandResult.Success(lsMsg("current 'maxBlocks': " + maxBlocksToUncover));
             }
+            int maxBlocks = (int)args.Parsers[0].GetValue();
             if (maxBlocks <= 0)
             {
                 return TextCommandResult.Error(lsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
             }
 
+            string outString = "set 'maxBlocks' from " + maxBlocksToUncover + " to: " + maxBlocks;
             maxBlocksToUncover = maxBlocks;
 
             // remove already visible block highlights but are over new limit
             BlockPosRenderer.delAllBlockPositionsButFirstN(maxBlocks);
-            return TextCommandResult.Success(lsMsg("set 'maxBlocks' from " + maxBlocksToUncover + " to: " + maxBlocks));
+            return TextCommandResult.Success(lsMsg(outString));
         }
 
         private TextCommandResult CmdLazySearch(TextCommandCallingArgs args)
         {
-            int radius;
-            if (args.ArgCount < 1 || !int.TryParse(args[0].ToString(), out radius) || (args.ArgCount != 2 && radius >= 0)) // TODO: check for ToString() being neccessary
+            if (args.ArgCount < 2 || args.ArgCount > 2 || args.Parsers[0].IsMissing || args.Parsers[1].IsMissing)
             {
                 return TextCommandResult.Success(lsMsg("Syntax is: .lz <radius> <blockWord>"));
             }
+            int radius = (int)args.Parsers[0].GetValue();
             if (radius <= 0)
             {
                 return TextCommandResult.Error(lsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
@@ -95,38 +96,41 @@ namespace LazySearch
             float radius_f = (float)radius;
             bool valid_block;
             int x, y, z;
-            string blockWord = args[1].ToString();
+            string blockWord = (string)args.Parsers[1].GetValue();
 
-            for (int s = 0; s <= radius; s++) // s="shell"
+            ((System.Action)(() =>
             {
-                for (x = -s; x <= +s; x++)
+                for (int s = 0; s <= radius; s++) // s="shell"
                 {
-                    for (y = -s; y <= +s; y++)
+                    for (x = -s; x <= +s; x++)
                     {
-                        for (z = -s; z <= +s; z++)
+                        for (y = -s; y <= +s; y++)
                         {
-                            valid_block = (x == -s || x == +s) || (y == -s || y == +s) || (z == -s || z == +s);  // any on shell
-                            if (valid_block)
+                            for (z = -s; z <= +s; z++)
                             {
-                                if (blocksFound >= maxBlocksToUncover)
-                                {
-                                    // already hit the maximum, just stop
-                                    goto endQuadrupleLoop; // sry for using goto x)
-                                }
-                                else
-                                {
-                                    bp = (new BlockPos(x, y, z)) + playerPos;
-                                    tempRadius = bp.DistanceTo(playerPos);
-                                    if (tempRadius > radius_f)
+                                valid_block = (x == -s || x == +s) || (y == -s || y == +s) || (z == -s || z == +s);  // any on shell
+                                if (valid_block)
+                            {
+                                    if (blocksFound >= maxBlocksToUncover)
                                     {
-                                        // skip block in greater distance to player than given radius
-                                        // (as search volume is cube with sidelength 1+2*radius centered at player)
-                                        continue;
+                                        // already hit the maximum, just stop
+                                        return; // return from lambda-function
                                     }
-                                    searchedRadius = tempRadius;
-                                    b = bacc.GetBlock(bp);
-                                    bName = b.Code.GetName();
-                                    if (bName.Contains(blockWord))
+                                    else
+                                    {
+                                        bp = new BlockPos(x, y, z);
+                                        tempRadius = bp.ToVec3f().Length();
+                                        if (tempRadius > radius_f)
+                                        {
+                                            // skip block in greater distance to player than given radius
+                                            // (as search volume is cube with sidelength 1+2*radius centered at player)
+                                            continue;
+                                        }
+                                        searchedRadius = tempRadius;
+                                        bp += playerPos;
+                                        b = bacc.GetBlock(bp);
+                                        bName = b.Code.GetName();
+                                        if (bName.Contains(blockWord))
                                     {
                                         printClient("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
                                         blocksFound++;
@@ -137,14 +141,14 @@ namespace LazySearch
                                 }
                             }
                         }
+                        }
                     }
                 }
-            }
-        endQuadrupleLoop:
+            }))();
 
             printClient("=&gt; Lazy search done.");
             string maxAmountHit = (blocksFound < maxBlocksToUncover) ? "" : " (limited by maximal block highlight number, check .lz_mb to change)";
-            return TextCommandResult.Success(lsMsg("Found " + blocksFound + " blocks with '" + args[1] + "'. Max Search radius: " + searchedRadius + "" + maxAmountHit));
+            return TextCommandResult.Success(lsMsg("Found " + blocksFound + " blocks with '" + args[1] + "'. Max Search radius: " + searchedRadius.ToString("F1") + "" + maxAmountHit));
         }
 
         public override void StartClientSide(ICoreClientAPI api)

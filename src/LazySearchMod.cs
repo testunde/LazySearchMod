@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
 namespace LazySearch
@@ -15,8 +15,8 @@ namespace LazySearch
         {
             if (logDebug)
             {
-                capi?.Logger.Debug("|LazySearch|: " + msg);
-                capi?.ShowChatMessage("|LazySearch|: " + msg);
+                capi?.Logger.Debug(CommandSystem.LsMsg(msg));
+                capi?.ShowChatMessage(CommandSystem.LsMsg(msg));
             }
         }
 
