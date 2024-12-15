@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net461</TargetFramework>
+		<TargetFramework>net7.0</TargetFramework>
 	</PropertyGroup>
 	
 	<ItemGroup>
@@ -29,6 +29,6 @@
 	<Target Name="Package" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
         <Delete Files="$(TargetDir)$(TargetName).pdb" />
         <Delete Files="$(TargetDir)assets/.gitkeep" />
-		<ZipDirectory DestinationFile="bin/$(TargetName)_v1.2.5_v1.17.8.zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
+		<ZipDirectory DestinationFile="bin/$(TargetName)_v1.2.6_v1.20.0.zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
 	</Target>
 </Project>
