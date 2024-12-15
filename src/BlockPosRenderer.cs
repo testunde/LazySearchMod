@@ -39,6 +39,12 @@ namespace LazySearch
             api.Event.RegisterRenderer(this, EnumRenderStage.AfterBlit);
         }
 
+
+        public static int getBlockCount()
+        {
+            return bPosList.Count;
+        }
+
         public static void plotCoord(BlockPos bp)
         {
             bPosList.Add(bp.Copy());

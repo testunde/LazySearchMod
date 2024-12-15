@@ -36,6 +36,13 @@ namespace LazySearch
             base.Start(api);
         }
 
+        private TextCommandResult CmdClearHighlights(TextCommandCallingArgs args)
+        {
+            int oldBlockCount = BlockPosRenderer.getBlockCount();
+            BlockPosRenderer.clearBlockPosList();
+            return TextCommandResult.Success(lsMsg("Cleared " + oldBlockCount + " highlights."));
+        }
+
         private TextCommandResult CmdMaximalBlocks(TextCommandCallingArgs args)
         {
             int maxBlocks = 0; // actual initialization-value does not matter
@@ -66,10 +73,9 @@ namespace LazySearch
             {
                 return TextCommandResult.Success(lsMsg("Syntax is: .lz <radius> <blockWord>"));
             }
-            if (radius < 0)
+            if (radius <= 0)
             {
-                BlockPosRenderer.clearBlockPosList();
-                return TextCommandResult.Success(lsMsg("Cleared highlights."));
+                return TextCommandResult.Error(lsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
             }
             EntityPlayer byEntity = capi.World.Player.Entity;
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
@@ -146,6 +152,9 @@ namespace LazySearch
             base.StartClientSide(api);
             capi = api;
             var parsers = api.ChatCommands.Parsers;
+
+            api.ChatCommands.Create("lz_cl").WithDescription("lz_cl: clears any visible highlights")
+                .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdClearHighlights);
 
             api.ChatCommands.Create("lz_mb").WithDescription("lz_mb: get/set maximal blocks to highlight")
                 .WithArgs(parsers.OptionalInt("max blocks to uncover")).RequiresPrivilege(Privilege.chat)

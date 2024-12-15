@@ -12,9 +12,11 @@ Those env. variables are used in `.csproj` and `launch.json`.
 - `VINTAGE_STORY_DATA`: points to the user data directory (thus i.e. `$HOME/.config/VintagestoryData` or `%AppData%\VintagestoryData`)
 
 ## In-Game Usage
-Syntax: `/lz <radius from player position> <string (word) searched in block path>` - searches for blocks in the world; set radius `< 0` to clear all markings
+Syntax: `/lz <radius from player position> <string (word) searched in block path>` - searches for blocks in the world
 
 Syntax: `/lz_mb [max blocks to uncover]` - get/set maximal blocks to highlight
+
+Syntax: `/lz_cl` - clears any visible highlights
 
 ! Be aware that a too-high used `radius` at a too-high set `maxBlock` may freeze a game for the time it needs to search, as it runs on the main thread. ETA depends on your PC specifications.
 
