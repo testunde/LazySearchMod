@@ -12,10 +12,6 @@ namespace LazySearch
 
         string lsMsg(string msg) { return "|LazySearch|: " + msg; }
 
-        void msgPlayer(string msg)
-        {
-            capi?.ShowChatMessage(lsMsg(msg));
-        }
         void printClient(string msg)
         {
             if (LazySearchMod.logDebug)
@@ -45,7 +41,7 @@ namespace LazySearch
             int maxBlocks = 0; // actual initialization-value does not matter
             if (args.ArgCount > 1 || (args.ArgCount == 1 && !int.TryParse(args[0].ToString(), out maxBlocks)))
             {
-                return TextCommandResult.Success(lsMsg("Syntax is: .lz_mb optional:maxBlocks"));
+                return TextCommandResult.Success(lsMsg("Syntax is: .lz_mb [maxBlocks]"));
             }
             if (args.ArgCount == 0)
             {
@@ -65,10 +61,10 @@ namespace LazySearch
 
         private TextCommandResult CmdLazySearch(TextCommandCallingArgs args)
         {
-            int radius = 20; // actual initialization-value does not matter
+            int radius;
             if (args.ArgCount < 1 || !int.TryParse(args[0].ToString(), out radius) || (args.ArgCount != 2 && radius >= 0)) // TODO: check for ToString() being neccessary
             {
-                return TextCommandResult.Success(lsMsg("Syntax is: .lz radius blockString"));
+                return TextCommandResult.Success(lsMsg("Syntax is: .lz <radius> <blockWord>"));
             }
             if (radius < 0)
             {
@@ -80,9 +76,6 @@ namespace LazySearch
 
             printClient("=&gt; Starting lazy search...");
             printClient("Player Pos: " + getGameBlockPos(playerPos).ToString());
-
-            BlockPos minPos = playerPos - radius;
-            BlockPos maxPos = playerPos + radius;
 
             int blocksFound = 0;
             float searchedRadius = 0.0f;
@@ -96,6 +89,7 @@ namespace LazySearch
             float radius_f = (float)radius;
             bool valid_block;
             int x, y, z;
+            string blockWord = args[1].ToString();
 
             for (int s = 0; s <= radius; s++) // s="shell"
             {
@@ -126,7 +120,7 @@ namespace LazySearch
                                     searchedRadius = tempRadius;
                                     b = bacc.GetBlock(bp);
                                     bName = b.Code.GetName();
-                                    if (bName.Contains(args[1].ToString()))
+                                    if (bName.Contains(blockWord))
                                     {
                                         printClient("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
                                         blocksFound++;
