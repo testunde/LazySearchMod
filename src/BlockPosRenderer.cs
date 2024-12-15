@@ -8,12 +8,11 @@ namespace LazySearch
 {
     public class BlockPosRenderer : ModSystem, IRenderer
     {
-        ICoreClientAPI capi;
-
-        MeshRef bMR = null;
-        static List<BlockPos> bPosList = new List<BlockPos>();
-        int bTextureId;
-        float[] viewMatrix = new float[16];
+        private ICoreClientAPI capi;
+        private MeshRef bMR = null;
+        private static readonly List<BlockPos> bPosList = new();
+        private int bTextureId;
+        private float[] viewMatrix = new float[16];
 
         public double RenderOrder
         {
@@ -35,27 +34,27 @@ namespace LazySearch
         public override void StartClientSide(ICoreClientAPI api)
         {
             base.StartClientSide(api);
-            this.capi = api;
+            capi = api;
             api.Event.RegisterRenderer(this, EnumRenderStage.AfterBlit);
         }
 
 
-        public static int getBlockCount()
+        public static int GetBlockCount()
         {
             return bPosList.Count;
         }
 
-        public static void plotCoord(BlockPos bp)
+        public static void PlotCoord(BlockPos bp)
         {
             bPosList.Add(bp.Copy());
         }
 
-        public static void clearBlockPosList()
+        public static void ClearBlockPosList()
         {
             bPosList.Clear();
         }
 
-        public static void delAllBlockPositionsButFirstN(int n)
+        public static void DeleteAllBlockPositionsButFirstN(int n)
         {
             if (bPosList.Count <= n) return; // nothing to do
 
@@ -66,11 +65,10 @@ namespace LazySearch
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
             IClientPlayer plr = capi.World.Player;
-            EntityShapeRenderer rend = plr.Entity.Properties.Client.Renderer as EntityShapeRenderer;
-            if (rend == null) return;
+            if (plr.Entity.Properties.Client.Renderer is not EntityShapeRenderer rend) return;
 
             // create copy of list as otherwise it could be modified during iteration
-            List<BlockPos> bPosList_local = new List<BlockPos>(bPosList);
+            List<BlockPos> bPosList_local = new(bPosList);
             foreach (BlockPos bp in bPosList_local)
             {
                 if (bp != null)

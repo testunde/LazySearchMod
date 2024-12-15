@@ -1,19 +1,17 @@
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
 namespace LazySearch
 {
     public class LazySearchMod : ModSystem
     {
-        public static bool logDebug = false;
-        ICoreClientAPI capi = null;
-        void msgPlayer(string msg)
+        public static bool LogDebug
+        { get; set; } = false;
+        private ICoreClientAPI capi = null;
+
+        private void PrintClient(string msg)
         {
-            capi?.ShowChatMessage("|LazySearch|: " + msg);
-        }
-        void printClient(string msg)
-        {
-            if (logDebug)
+            if (LogDebug)
             {
                 capi?.Logger.Debug(CommandSystem.LsMsg(msg));
                 capi?.ShowChatMessage(CommandSystem.LsMsg(msg));
@@ -35,7 +33,7 @@ namespace LazySearch
             base.StartClientSide(api);
             capi = api;
 
-            printClient("LazySearch Mod started");
+            PrintClient("LazySearch Mod started");
         }
     }
 }

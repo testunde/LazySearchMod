@@ -8,24 +8,25 @@ namespace LazySearch
 {
     public class CommandSystem : ModSystem
     {
-        ICoreClientAPI capi = null;
+        private ICoreClientAPI capi = null;
 
-        public string lsMsg(string msg) { return "|LazySearch|: " + msg; }
+        public static string LsMsg(string msg) { return "|LazySearch|: " + msg; }
 
-        void printClient(string msg)
+        private void PrintClient(string msg)
         {
-            if (LazySearchMod.logDebug)
+            if (LazySearchMod.LogDebug)
             {
-                capi?.Logger.Debug(lsMsg(msg));
-                capi?.ShowChatMessage(lsMsg(msg));
+                capi?.Logger.Debug(LsMsg(msg));
+                capi?.ShowChatMessage(LsMsg(msg));
             }
         }
 
-        public static int maxBlocksToUncover
+        public static int MaxBlocksToUncover
         { get; set; } = 100;
 
-        static BlockPos spawnPos = new BlockPos(0, 0, 0);
-        static BlockPos getGameBlockPos(BlockPos worldBP)
+        private static readonly BlockPos spawnPos = new(0, 0, 0);
+
+        private static BlockPos GetGameBlockPos(BlockPos worldBP)
         {
             BlockPos bp = worldBP.Copy();
             return bp - new BlockPos(spawnPos.X, 0, spawnPos.Z);
@@ -38,55 +39,55 @@ namespace LazySearch
 
         private TextCommandResult CmdClearHighlights(TextCommandCallingArgs args)
         {
-            int oldBlockCount = BlockPosRenderer.getBlockCount();
-            BlockPosRenderer.clearBlockPosList();
-            return TextCommandResult.Success(lsMsg("Cleared " + oldBlockCount + " highlights."));
+            int oldBlockCount = BlockPosRenderer.GetBlockCount();
+            BlockPosRenderer.ClearBlockPosList();
+            return TextCommandResult.Success(LsMsg("Cleared " + oldBlockCount + " highlights."));
         }
 
         private TextCommandResult CmdMaximalBlocks(TextCommandCallingArgs args)
         {
             if (args.ArgCount > 1)
             {
-                return TextCommandResult.Success(lsMsg("Syntax is: .lz_mb [maxBlocks]"));
+                return TextCommandResult.Success(LsMsg("Syntax is: .lz_mb [maxBlocks]"));
             }
             if (args.ArgCount == 0 || args.Parsers[0].IsMissing)
             {
-                return TextCommandResult.Success(lsMsg("current 'maxBlocks': " + maxBlocksToUncover));
+                return TextCommandResult.Success(LsMsg("current 'maxBlocks': " + MaxBlocksToUncover));
             }
             int maxBlocks = (int)args.Parsers[0].GetValue();
             if (maxBlocks <= 0)
             {
-                return TextCommandResult.Error(lsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
+                return TextCommandResult.Error(LsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
             }
 
-            string outString = "set 'maxBlocks' from " + maxBlocksToUncover + " to: " + maxBlocks;
-            maxBlocksToUncover = maxBlocks;
+            string outString = "set 'maxBlocks' from " + MaxBlocksToUncover + " to: " + maxBlocks;
+            MaxBlocksToUncover = maxBlocks;
 
             // remove already visible block highlights but are over new limit
-            BlockPosRenderer.delAllBlockPositionsButFirstN(maxBlocks);
-            return TextCommandResult.Success(lsMsg(outString));
+            BlockPosRenderer.DeleteAllBlockPositionsButFirstN(maxBlocks);
+            return TextCommandResult.Success(LsMsg(outString));
         }
 
         private TextCommandResult CmdLazySearch(TextCommandCallingArgs args)
         {
             if (args.ArgCount < 2 || args.ArgCount > 2 || args.Parsers[0].IsMissing || args.Parsers[1].IsMissing)
             {
-                return TextCommandResult.Success(lsMsg("Syntax is: .lz <radius> <blockWord>"));
+                return TextCommandResult.Success(LsMsg("Syntax is: .lz <radius> <blockWord>"));
             }
             int radius = (int)args.Parsers[0].GetValue();
             if (radius <= 0)
             {
-                return TextCommandResult.Error(lsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
+                return TextCommandResult.Error(LsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
             }
             EntityPlayer byEntity = capi.World.Player.Entity;
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
 
-            printClient("=&gt; Starting lazy search...");
-            printClient("Player Pos: " + getGameBlockPos(playerPos).ToString());
+            PrintClient("=&gt; Starting lazy search...");
+            PrintClient("Player Pos: " + GetGameBlockPos(playerPos).ToString());
 
             int blocksFound = 0;
             float searchedRadius = 0.0f;
-            BlockPosRenderer.clearBlockPosList();
+            BlockPosRenderer.ClearBlockPosList();
 
             IBlockAccessor bacc = capi.World.GetBlockAccessor(false, false, false);
             BlockPos bp;
@@ -108,10 +109,11 @@ namespace LazySearch
                         {
                             for (z = -s; z <= +s; z++)
                             {
-                                valid_block = (x == -s || x == +s) || (y == -s || y == +s) || (z == -s || z == +s);  // any on shell
+                                valid_block = (x == -s || x == +s) || (y == -s || y == +s) || (z == -s || z == +s);
+                                // any on shell
                                 if (valid_block)
-                            {
-                                    if (blocksFound >= maxBlocksToUncover)
+                                {
+                                    if (blocksFound >= MaxBlocksToUncover)
                                     {
                                         // already hit the maximum, just stop
                                         return; // return from lambda-function
@@ -131,24 +133,26 @@ namespace LazySearch
                                         b = bacc.GetBlock(bp);
                                         bName = b.Code.GetName();
                                         if (bName.Contains(blockWord))
-                                    {
-                                        printClient("found '" + bName + "' at: " + getGameBlockPos(bp).ToString());
-                                        blocksFound++;
+                                        {
+                                            PrintClient("found '" + bName + "' at: " + GetGameBlockPos(bp).ToString());
+                                            blocksFound++;
 
-                                        // call BlockPosRenderer
-                                        BlockPosRenderer.plotCoord(bp.Copy());
+                                            // call BlockPosRenderer
+                                            BlockPosRenderer.PlotCoord(bp.Copy());
+                                        }
                                     }
                                 }
                             }
-                        }
                         }
                     }
                 }
             }))();
 
-            printClient("=&gt; Lazy search done.");
-            string maxAmountHit = (blocksFound < maxBlocksToUncover) ? "" : " (limited by maximal block highlight number, check .lz_mb to change)";
-            return TextCommandResult.Success(lsMsg("Found " + blocksFound + " blocks with '" + args[1] + "'. Max Search radius: " + searchedRadius.ToString("F1") + "" + maxAmountHit));
+            PrintClient("=&gt; Lazy search done.");
+            string maxAmountHit = (blocksFound < MaxBlocksToUncover) ? "" :
+                " (limited by maximal block highlight number, check .lz_mb to change)";
+            return TextCommandResult.Success(LsMsg("Found " + blocksFound + " blocks with '" + args[1] +
+                "'. Max Search radius: " + searchedRadius.ToString("F1") + "" + maxAmountHit));
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -165,7 +169,8 @@ namespace LazySearch
                 .RequiresPlayer().HandleWith(CmdMaximalBlocks);
 
             api.ChatCommands.Create("lz").WithDescription("lz: searches for blocks in the world")
-                .WithArgs(parsers.Int("radius from player position"), parsers.Word("string (word) searched in block path"))
+                .WithArgs(parsers.Int("radius from player position"),
+                    parsers.Word("string (word) searched in block path"))
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdLazySearch);
         }
 
