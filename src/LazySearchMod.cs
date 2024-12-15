@@ -1,13 +1,5 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Server;
-
-[assembly: ModInfo("LazySearch",
-    Version = "1.2.6",
-    // Side = "Client",
-    Description = "A lazy approach to search for blocks in the World",
-    Website = "https://github.com/testunde/LazySearchMod",
-    Authors = new[] { "TeStUnDe" })]
 
 namespace LazySearch
 {

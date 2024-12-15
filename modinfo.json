@@ -8,7 +8,7 @@
 	"authors": [
 		"TeStUnDe"
 	],
-	"dependencies": {
+	"dependency": {
 		"game": "1.20.0"
 	}
 }
