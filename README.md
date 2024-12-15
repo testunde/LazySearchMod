@@ -24,5 +24,4 @@ Syntax: `/lz_cl` - clears any visible highlights
 Base project setup from `copygirl` (https://github.com/copygirl/howto-example-mod), thanks to You!
 
 ## Known Issues
-- may draw over chatbox, in-world huds (drawn over blocks) and inventories if standing too near (as they appear to be not rendered in the dedicated "GUI" rendering step)
 - may freeze the game if search radius is too high as search is done in main thread

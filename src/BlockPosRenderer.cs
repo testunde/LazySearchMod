@@ -17,7 +17,7 @@ namespace LazySearch
 
         public double RenderOrder
         {
-            get { return 1; }
+            get { return 0.01; }
         }
 
         public int RenderRange
