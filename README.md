@@ -18,10 +18,12 @@ Syntax: `/lz_mb [max blocks to uncover]` - get/set maximal blocks to highlight
 
 Syntax: `/lz_cl` - clears any visible highlights
 
+Syntax: `/lz_stop` - stops the currently running search
+
 ! Be aware that a too-high used `radius` at a too-high set `maxBlock` may freeze a game for the time it needs to search, as it runs on the main thread. ETA depends on your PC specifications.
 
 ## Acknowledgement
 Base project setup from `copygirl` (https://github.com/copygirl/howto-example-mod), thanks to You!
 
 ## Known Issues
-- may freeze the game if search radius is too high as search is done in main thread
+- from 2000 highlight-boxes on and above significant CPU usage can be expected

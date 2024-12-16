@@ -15,8 +15,7 @@ namespace LazySearch
 
         void MsgPlayer(string msg)
         {
-            // TODO: add chat mutex?
-            // capi?.ShowChatMessage(LsMsg(msg));
+            capi?.ShowChatMessage(LsMsg(msg));
             PrintClient(msg, true);
         }
 
@@ -50,8 +49,28 @@ namespace LazySearch
             base.Start(api);
         }
 
+        private TextCommandResult CmdStopSearch(TextCommandCallingArgs _args, bool silent = false)
+        {
+            if (searchThread != null && searchThread.IsAlive)
+            {
+                searchThread.Interrupt();
+                var startTime = System.DateTime.Now;
+                while (searchThread.IsAlive)
+                {
+                    if ((System.DateTime.Now - startTime).TotalSeconds > 3.0)
+                    {
+                        return TextCommandResult.Error(silent ? "" : LsMsg("Lazy search interrupt timed out."));
+                    }
+                    Thread.Sleep(10);
+                }
+                return TextCommandResult.Success(silent ? "" : LsMsg("Lazy search interrupt executed."));
+            }
+            return TextCommandResult.Success(silent ? "" : LsMsg("No Lazy search running."));
+        }
+
         private TextCommandResult CmdClearHighlights(TextCommandCallingArgs args)
         {
+            CmdStopSearch(null, true);
             int oldBlockCount = BlockPosRenderer.GetBlockCount();
             BlockPosRenderer.ClearBlockPosList();
             return TextCommandResult.Success(LsMsg("Cleared " + oldBlockCount + " highlights."));
@@ -103,7 +122,7 @@ namespace LazySearch
                 {
                     if ((System.DateTime.Now - startTime).TotalSeconds > 3.0)
                     {
-                        return TextCommandResult.Error(LsMsg("Search interrupt timed out."));
+                        return TextCommandResult.Error(LsMsg("Lazy search interrupt timed out."));
                     }
                     Thread.Sleep(10);
                 }
@@ -112,7 +131,7 @@ namespace LazySearch
             EntityPlayer byEntity = capi.World.Player.Entity;
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
 
-            MsgPlayer("Starting lazy search...");
+            MsgPlayer("Starting Lazy search...");
             PrintClient("Player Pos: " + GetGameBlockPos(playerPos).ToString());
 
             BlockPosRenderer.ClearBlockPosList();
@@ -144,6 +163,12 @@ namespace LazySearch
                             valid_block_x = (x == -s || x == +s);
                             for (y = -s; y <= +s; y++)
                             {
+                                if (Thread.CurrentThread.IsAlive &&
+                                    Thread.CurrentThread.ThreadState == ThreadState.Running)
+                                {
+                                    Thread.Sleep(0); // Allow interruption to be processed
+                                }
+
                                 valid_block_xy = valid_block_x || (y == -s || y == +s);
                                 for (z = -s; z <= +s; z++)
                                 {
@@ -175,7 +200,8 @@ namespace LazySearch
                                         }
                                         if (bName.Contains(blockWord))
                                         {
-                                            PrintClient("found '" + bName + "' at: " + GetGameBlockPos(bp).ToString());
+                                            capi.Event.EnqueueMainThreadTask(() => PrintClient("found '" + bName +
+                                                "' at: " + GetGameBlockPos(bp).ToString()), "");
                                             blocksFound++;
 
                                             // call BlockPosRenderer
@@ -187,19 +213,20 @@ namespace LazySearch
                         }
                     }
 
-                    PrintClient("Lazy search done.");
+                    capi.Event.EnqueueMainThreadTask(() => PrintClient("Lazy search done."), "");
                     string maxAmountHit = (blocksFound < MaxBlocksToUncover_temp) ? "" :
                         " (limited by maximal block highlight number, check .lz_mb to change)";
-                    MsgPlayer("Found " + blocksFound + " blocks with '" + blockWord +
-                        "'. Max Search radius: " + searchedRadius.ToString("F1") + "" + maxAmountHit);
+
+                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Found " + blocksFound + " blocks with '" +
+                        blockWord + "'. Max search radius: " + searchedRadius.ToString("F1") + "" + maxAmountHit), "");
                 }
                 catch (ThreadAbortException)
                 {
-                    MsgPlayer("Lazy search interrupted.");
+                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted."), "");
                 }
                 catch (ThreadInterruptedException)
                 {
-                    MsgPlayer("Lazy search interrupted.");
+                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted."), "");
                 }
             });
 
@@ -213,7 +240,8 @@ namespace LazySearch
             capi = api;
             var parsers = api.ChatCommands.Parsers;
 
-            // TODO: add lz_stop command
+            api.ChatCommands.Create("lz_stop").WithDescription("lz_stop: stops the currently running search")
+                .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith((args) => CmdStopSearch(args, false));
 
             api.ChatCommands.Create("lz_cl").WithDescription("lz_cl: clears any visible highlights")
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdClearHighlights);
