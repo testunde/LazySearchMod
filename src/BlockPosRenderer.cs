@@ -10,6 +10,7 @@ namespace LazySearch
     {
         private ICoreClientAPI capi;
         private MeshRef bMR = null;
+        private IStandardShaderProgram prog = null;
         private static readonly List<BlockPos> bPosList = new();
         private int bTextureId;
         private float[] viewMatrix = new float[16];
@@ -85,6 +86,11 @@ namespace LazySearch
             {
                 bPosList_local = new(bPosList);
             }
+
+            // render last added blocks first
+            // TODO: reorder depending on momentary distance to player (might not be needed for single-color meshes)
+            bPosList_local.Reverse();
+
             foreach (BlockPos bp in bPosList_local)
             {
                 if (bp != null)
@@ -118,6 +124,20 @@ namespace LazySearch
                 bMR = capi.Render.UploadMesh(bMD);
                 bTextureId = capi.BlockTextureAtlas.Positions[0].atlasTextureId;
                 viewMatrix = rpi.CameraMatrixOriginf;
+
+                prog = rpi.PreparedStandardShader(0, 0, 0);
+                // no lighting effects
+                prog.FogDensityIn = 0.0f;
+                prog.RgbaLightIn = new Vec4f(255f, 255f, 255f, 255f);
+                prog.RgbaFogIn = new Vec4f(255f, 255f, 255f, 255f);
+                prog.RgbaAmbientIn = new Vec3f(255f, 255f, 255f);
+                prog.RgbaGlowIn = new Vec4f(255f, 255f, 255f, 255f);
+                prog.RgbaTint = new Vec4f(255f, 255f, 255f, 255f);
+
+                prog.Tex2D = bTextureId;
+                prog.AlphaTest = 0.001f;
+                prog.ViewMatrix = viewMatrix;
+                prog.Compile();
             }
 
             float[] modelMat_h = Mat4f.Create();
@@ -126,19 +146,8 @@ namespace LazySearch
             Mat4f.Translate(modelMat_h, modelMat_h, posDiff.X, posDiff.Y, posDiff.Z);
             Mat4f.Translate(modelMat_h, modelMat_h, 0.5f, 0.5f, 0.5f); // offset by 0.5 since block coordinates are off-set
 
-            IStandardShaderProgram prog = rpi.PreparedStandardShader(bPos.X, bPos.Y, bPos.Z);
-            // no lighting effects
-            prog.FogDensityIn = 0.0f;
-            prog.RgbaLightIn = new Vec4f(255f, 255f, 255f, 255f);
-            prog.RgbaFogIn = new Vec4f(255f, 255f, 255f, 255f);
-            prog.RgbaAmbientIn = new Vec3f(255f, 255f, 255f);
-            prog.RgbaGlowIn = new Vec4f(255f, 255f, 255f, 255f);
-            prog.RgbaTint = new Vec4f(255f, 255f, 255f, 255f);
-
-            prog.Tex2D = bTextureId;
-            prog.AlphaTest = 0.001f;
+            prog.Use();
             prog.ModelMatrix = modelMat_h;
-            prog.ViewMatrix = viewMatrix;
 
             capi.Render.RenderMesh(bMR);
 
@@ -148,6 +157,7 @@ namespace LazySearch
         public override void Dispose()
         {
             bMR?.Dispose();
+            prog?.Dispose();
         }
 
 
