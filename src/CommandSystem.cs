@@ -156,62 +156,65 @@ namespace LazySearch
 
                 try
                 {
-                    for (int s = 0; s <= radius; s++) // s="shell"
+                    ((System.Action)(() =>
                     {
-                        for (x = -s; x <= +s; x++)
+                        for (int s = 0; s <= radius; s++) // s="shell"
                         {
-                            valid_block_x = (x == -s || x == +s);
-                            for (y = -s; y <= +s; y++)
+                            for (x = -s; x <= +s; x++)
                             {
-                                if (Thread.CurrentThread.IsAlive &&
-                                    Thread.CurrentThread.ThreadState == ThreadState.Running)
+                                valid_block_x = (x == -s || x == +s);
+                                for (y = -s; y <= +s; y++)
                                 {
-                                    Thread.Sleep(0); // Allow interruption to be processed
-                                }
-
-                                valid_block_xy = valid_block_x || (y == -s || y == +s);
-                                for (z = -s; z <= +s; z++)
-                                {
-                                    valid_block_xyz = valid_block_xy || (z == -s || z == +s);
-                                    // any on shell
-                                    if (valid_block_xyz)
+                                    if (Thread.CurrentThread.IsAlive &&
+                                        Thread.CurrentThread.ThreadState == ThreadState.Running)
                                     {
-                                        if (blocksFound >= MaxBlocksToUncover_temp)
-                                        {
-                                            // already hit the maximum, just stop
-                                            return; // return from thread
-                                        }
+                                        Thread.Sleep(0); // Allow interruption to be processed
+                                    }
 
-                                        bp = new BlockPos(x, y, z);
-                                        tempRadius = bp.ToVec3f().Length();
-                                        if (tempRadius > radius_f)
+                                    valid_block_xy = valid_block_x || (y == -s || y == +s);
+                                    for (z = -s; z <= +s; z++)
+                                    {
+                                        valid_block_xyz = valid_block_xy || (z == -s || z == +s);
+                                        // any on shell
+                                        if (valid_block_xyz)
                                         {
-                                            // skip block in greater distance to player than given radius
-                                            // (as search volume is cube with sidelength 1+2*radius centered at player)
-                                            continue;
-                                        }
-                                        searchedRadius = tempRadius;
-                                        bp += playerPos;
-                                        b = bacc.GetBlock(bp);
-                                        bName = b.Code?.GetName();
-                                        if (bName == null)
-                                        {
-                                            continue;
-                                        }
-                                        if (bName.Contains(blockWord))
-                                        {
-                                            capi.Event.EnqueueMainThreadTask(() => PrintClient("found '" + bName +
-                                                "' at: " + GetGameBlockPos(bp).ToString()), "");
-                                            blocksFound++;
+                                            if (blocksFound >= MaxBlocksToUncover_temp)
+                                            {
+                                                // already hit the maximum, just stop
+                                                return; // return from from lambda-function
+                                            }
 
-                                            // call BlockPosRenderer
-                                            BlockPosRenderer.PlotCoord(bp.Copy());
+                                            bp = new BlockPos(x, y, z);
+                                            tempRadius = bp.ToVec3f().Length();
+                                            if (tempRadius > radius_f)
+                                            {
+                                                // skip block in greater distance to player than given radius
+                                                // (as search volume is cube with sidelength 1+2*radius centered at player)
+                                                continue;
+                                            }
+                                            searchedRadius = tempRadius;
+                                            bp += playerPos;
+                                            b = bacc.GetBlock(bp);
+                                            bName = b.Code?.GetName();
+                                            if (bName == null)
+                                            {
+                                                continue;
+                                            }
+                                            if (bName.Contains(blockWord))
+                                            {
+                                                capi.Event.EnqueueMainThreadTask(() => PrintClient("found '" + bName +
+                                                    "' at: " + GetGameBlockPos(bp).ToString()), "");
+                                                blocksFound++;
+
+                                                // call BlockPosRenderer
+                                                BlockPosRenderer.PlotCoord(bp.Copy());
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
+                    }))();
 
                     capi.Event.EnqueueMainThreadTask(() => PrintClient("Lazy search done."), "");
                     string maxAmountHit = (blocksFound < MaxBlocksToUncover_temp) ? "" :
@@ -222,11 +225,13 @@ namespace LazySearch
                 }
                 catch (ThreadAbortException)
                 {
-                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted."), "");
+                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted. (" +
+                        BlockPosRenderer.GetBlockCount() + " Blocks found)"), "");
                 }
                 catch (ThreadInterruptedException)
                 {
-                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted."), "");
+                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted. (" +
+                        BlockPosRenderer.GetBlockCount() + " Blocks found)"), "");
                 }
             });
 
