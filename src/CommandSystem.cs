@@ -2,6 +2,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.API.MathTools;
+using System.Threading;
 
 
 namespace LazySearch
@@ -14,7 +15,8 @@ namespace LazySearch
 
         void MsgPlayer(string msg)
         {
-            capi?.ShowChatMessage(LsMsg(msg));
+            // TODO: add chat mutex?
+            // capi?.ShowChatMessage(LsMsg(msg));
             PrintClient(msg, true);
         }
 
@@ -34,6 +36,8 @@ namespace LazySearch
         { get; set; } = 100;
 
         private static readonly BlockPos spawnPos = new(0, 0, 0);
+
+        private static Thread searchThread = null;
 
         private static BlockPos GetGameBlockPos(BlockPos worldBP)
         {
@@ -88,49 +92,71 @@ namespace LazySearch
             {
                 return TextCommandResult.Error(LsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
             }
+
+            // stop currently running thread
+            if (searchThread != null && searchThread.IsAlive)
+            {
+                MsgPlayer("Lazy search already running. Interrupting current search...");
+                searchThread.Interrupt();
+                var startTime = System.DateTime.Now;
+                while (searchThread.IsAlive)
+                {
+                    if ((System.DateTime.Now - startTime).TotalSeconds > 3.0)
+                    {
+                        return TextCommandResult.Error(LsMsg("Search interrupt timed out."));
+                    }
+                    Thread.Sleep(10);
+                }
+            }
+
             EntityPlayer byEntity = capi.World.Player.Entity;
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
 
             MsgPlayer("Starting lazy search...");
             PrintClient("Player Pos: " + GetGameBlockPos(playerPos).ToString());
 
-            int blocksFound = 0;
-            float searchedRadius = 0.0f;
             BlockPosRenderer.ClearBlockPosList();
 
             IBlockAccessor bacc = capi.World.GetBlockAccessor(false, false, false);
-            BlockPos bp;
-            float tempRadius;
-            Block b;
-            string bName;
-            float radius_f = (float)radius;
-            bool valid_block_x, valid_block_xy, valid_block_xyz;
-            int x, y, z;
             string blockWord = (string)args.Parsers[1].GetValue();
+            int MaxBlocksToUncover_temp = MaxBlocksToUncover;
 
-            ((System.Action)(() =>
+            // Create new thread with the search operation
+            searchThread = new Thread(() =>
             {
-                for (int s = 0; s <= radius; s++) // s="shell"
+                int blocksFound = 0;
+                float searchedRadius = 0.0f;
+
+                BlockPos bp;
+                float tempRadius;
+                Block b;
+                string bName;
+                float radius_f = (float)radius;
+                bool valid_block_x, valid_block_xy, valid_block_xyz;
+                int x, y, z;
+
+                try
                 {
-                    for (x = -s; x <= +s; x++)
+                    for (int s = 0; s <= radius; s++) // s="shell"
                     {
-                        valid_block_x = (x == -s || x == +s);
-                        for (y = -s; y <= +s; y++)
+                        for (x = -s; x <= +s; x++)
                         {
-                            valid_block_xy = valid_block_x || (y == -s || y == +s);
-                            for (z = -s; z <= +s; z++)
+                            valid_block_x = (x == -s || x == +s);
+                            for (y = -s; y <= +s; y++)
                             {
-                                valid_block_xyz = valid_block_xy || (z == -s || z == +s);
-                                // any on shell
-                                if (valid_block_xyz)
+                                valid_block_xy = valid_block_x || (y == -s || y == +s);
+                                for (z = -s; z <= +s; z++)
                                 {
-                                    if (blocksFound >= MaxBlocksToUncover)
+                                    valid_block_xyz = valid_block_xy || (z == -s || z == +s);
+                                    // any on shell
+                                    if (valid_block_xyz)
                                     {
-                                        // already hit the maximum, just stop
-                                        return; // return from lambda-function
-                                    }
-                                    else
-                                    {
+                                        if (blocksFound >= MaxBlocksToUncover_temp)
+                                        {
+                                            // already hit the maximum, just stop
+                                            return; // return from thread
+                                        }
+
                                         bp = new BlockPos(x, y, z);
                                         tempRadius = bp.ToVec3f().Length();
                                         if (tempRadius > radius_f)
@@ -160,14 +186,25 @@ namespace LazySearch
                             }
                         }
                     }
-                }
-            }))();
 
-                PrintClient("Lazy search done.");
-            string maxAmountHit = (blocksFound < MaxBlocksToUncover) ? "" :
-                " (limited by maximal block highlight number, check .lz_mb to change)";
-            return TextCommandResult.Success(LsMsg("Found " + blocksFound + " blocks with '" + args[1] +
-                "'. Max Search radius: " + searchedRadius.ToString("F1") + "" + maxAmountHit));
+                    PrintClient("Lazy search done.");
+                    string maxAmountHit = (blocksFound < MaxBlocksToUncover_temp) ? "" :
+                        " (limited by maximal block highlight number, check .lz_mb to change)";
+                    MsgPlayer("Found " + blocksFound + " blocks with '" + blockWord +
+                        "'. Max Search radius: " + searchedRadius.ToString("F1") + "" + maxAmountHit);
+                }
+                catch (ThreadAbortException)
+                {
+                    MsgPlayer("Lazy search interrupted.");
+                }
+                catch (ThreadInterruptedException)
+                {
+                    MsgPlayer("Lazy search interrupted.");
+                }
+            });
+
+            searchThread.Start();
+            return TextCommandResult.Success();
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -175,6 +212,8 @@ namespace LazySearch
             base.StartClientSide(api);
             capi = api;
             var parsers = api.ChatCommands.Parsers;
+
+            // TODO: add lz_stop command
 
             api.ChatCommands.Create("lz_cl").WithDescription("lz_cl: clears any visible highlights")
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdClearHighlights);

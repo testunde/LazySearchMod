@@ -41,25 +41,37 @@ namespace LazySearch
 
         public static int GetBlockCount()
         {
-            return bPosList.Count;
+            lock (bPosList)
+            {
+                return bPosList.Count;
+            }
         }
 
         public static void PlotCoord(BlockPos bp)
         {
-            bPosList.Add(bp.Copy());
+            lock (bPosList)
+            {
+                bPosList.Add(bp.Copy());
+            }
         }
 
         public static void ClearBlockPosList()
         {
-            bPosList.Clear();
+            lock (bPosList)
+            {
+                bPosList.Clear();
+            }
         }
 
         public static void DeleteAllBlockPositionsButFirstN(int n)
         {
-            if (bPosList.Count <= n) return; // nothing to do
+            lock (bPosList)
+            {
+                if (bPosList.Count <= n) return; // nothing to do
 
-            int nToDelete = bPosList.Count - n;
-            bPosList.RemoveRange(n, nToDelete);
+                int nToDelete = bPosList.Count - n;
+                bPosList.RemoveRange(n, nToDelete);
+            }
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
@@ -68,7 +80,11 @@ namespace LazySearch
             if (plr.Entity.Properties.Client.Renderer is not EntityShapeRenderer rend) return;
 
             // create copy of list as otherwise it could be modified during iteration
-            List<BlockPos> bPosList_local = new(bPosList);
+            List<BlockPos> bPosList_local;
+            lock (bPosList)
+            {
+                bPosList_local = new(bPosList);
+            }
             foreach (BlockPos bp in bPosList_local)
             {
                 if (bp != null)
