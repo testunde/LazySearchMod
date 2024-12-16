@@ -14,7 +14,7 @@ namespace LazySearch
             if (LogDebug)
             {
                 capi?.Logger.Debug(CommandSystem.LsMsg(msg));
-                capi?.ShowChatMessage(CommandSystem.LsMsg(msg));
+                capi?.ShowChatMessage(CommandSystem.LsMsg("=&gt; " + msg));
             }
         }
 

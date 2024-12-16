@@ -12,12 +12,21 @@ namespace LazySearch
 
         public static string LsMsg(string msg) { return "|LazySearch|: " + msg; }
 
-        private void PrintClient(string msg)
+        void MsgPlayer(string msg)
+        {
+            capi?.ShowChatMessage(LsMsg(msg));
+            PrintClient(msg, true);
+        }
+
+        private void PrintClient(string msg, bool playerAlreadyNotified = false)
         {
             if (LazySearchMod.LogDebug)
             {
                 capi?.Logger.Debug(LsMsg(msg));
-                capi?.ShowChatMessage(LsMsg(msg));
+                if (!playerAlreadyNotified)
+                {
+                    capi?.ShowChatMessage(LsMsg("=&gt; " + msg));
+                }
             }
         }
 
@@ -82,7 +91,7 @@ namespace LazySearch
             EntityPlayer byEntity = capi.World.Player.Entity;
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
 
-            PrintClient("=&gt; Starting lazy search...");
+            MsgPlayer("Starting lazy search...");
             PrintClient("Player Pos: " + GetGameBlockPos(playerPos).ToString());
 
             int blocksFound = 0;
@@ -95,7 +104,7 @@ namespace LazySearch
             Block b;
             string bName;
             float radius_f = (float)radius;
-            bool valid_block;
+            bool valid_block_x, valid_block_xy, valid_block_xyz;
             int x, y, z;
             string blockWord = (string)args.Parsers[1].GetValue();
 
@@ -105,13 +114,15 @@ namespace LazySearch
                 {
                     for (x = -s; x <= +s; x++)
                     {
+                        valid_block_x = (x == -s || x == +s);
                         for (y = -s; y <= +s; y++)
                         {
+                            valid_block_xy = valid_block_x || (y == -s || y == +s);
                             for (z = -s; z <= +s; z++)
                             {
-                                valid_block = (x == -s || x == +s) || (y == -s || y == +s) || (z == -s || z == +s);
+                                valid_block_xyz = valid_block_xy || (z == -s || z == +s);
                                 // any on shell
-                                if (valid_block)
+                                if (valid_block_xyz)
                                 {
                                     if (blocksFound >= MaxBlocksToUncover)
                                     {
@@ -131,7 +142,11 @@ namespace LazySearch
                                         searchedRadius = tempRadius;
                                         bp += playerPos;
                                         b = bacc.GetBlock(bp);
-                                        bName = b.Code.GetName();
+                                        bName = b.Code?.GetName();
+                                        if (bName == null)
+                                        {
+                                            continue;
+                                        }
                                         if (bName.Contains(blockWord))
                                         {
                                             PrintClient("found '" + bName + "' at: " + GetGameBlockPos(bp).ToString());
@@ -148,7 +163,7 @@ namespace LazySearch
                 }
             }))();
 
-            PrintClient("=&gt; Lazy search done.");
+                PrintClient("Lazy search done.");
             string maxAmountHit = (blocksFound < MaxBlocksToUncover) ? "" :
                 " (limited by maximal block highlight number, check .lz_mb to change)";
             return TextCommandResult.Success(LsMsg("Found " + blocksFound + " blocks with '" + args[1] +
