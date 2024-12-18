@@ -143,6 +143,7 @@ namespace LazySearch
             // Create new thread with the search operation
             searchThread = new Thread(() =>
             {
+                // TODO: try to utilize threading pool for full CPU utilization
                 int blocksFound = 0;
                 float searchedRadius = 0.0f;
 
