@@ -3,17 +3,16 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 using System.Collections.Generic;
+using Vintagestory.Client.NoObf;
 
 namespace LazySearch
 {
     public class BlockPosRenderer : ModSystem, IRenderer
     {
         private ICoreClientAPI capi;
-        private MeshRef bMR = null;
-        private IStandardShaderProgram prog = null;
+        private WireframeCube wFC = null;
         private static readonly List<BlockPos> bPosList = new();
-        private int bTextureId;
-        private float[] viewMatrix = new float[16];
+        private readonly Vec4f frameColor = new(1f, 1f, 0f, 1f);
 
         public double RenderOrder
         {
@@ -36,7 +35,8 @@ namespace LazySearch
         {
             base.StartClientSide(api);
             capi = api;
-            api.Event.RegisterRenderer(this, EnumRenderStage.AfterBlit);
+            capi.Event.RegisterRenderer(this, EnumRenderStage.AfterBlit);
+            wFC = WireframeCube.CreateCenterOriginCube(capi);
         }
 
 
@@ -102,62 +102,27 @@ namespace LazySearch
 
         private void HighlightBlock(EntityPlayer pEnt, EntityShapeRenderer rend, BlockPos bPos)
         {
-            IRenderAPI rpi = capi.Render;
-
-            if (bMR == null)
-            {
-                MeshData bMD = CubeMeshUtil.GetCube();
-                bMD.Scale(new Vec3f(0, 0, 0), 0.5f, 0.5f, 0.5f);
-                CubeMeshUtil.SetXyzFacesAndPacketNormals(bMD);
-                bMD.Rgba2Static = true;
-                bMD.RgbaStatic = true;
-                byte[] rgba = bMD.GetRgba();
-                for (int i = 0; i < rgba.Length; i += 4)
-                {
-                    // set color to purple
-                    rgba[i + 0] = 255;
-                    rgba[i + 1] = 0;
-                    rgba[i + 2] = 255;
-                    rgba[i + 3] = 255; // alpha
-                }
-                bMD.SetRgba(rgba);
-                bMR = capi.Render.UploadMesh(bMD);
-                bTextureId = capi.BlockTextureAtlas.Positions[0].atlasTextureId;
-                viewMatrix = rpi.CameraMatrixOriginf;
-
-                prog = rpi.PreparedStandardShader(0, 0, 0);
-                // no lighting effects
-                prog.FogDensityIn = 0.0f;
-                prog.RgbaLightIn = new Vec4f(255f, 255f, 255f, 255f);
-                prog.RgbaFogIn = new Vec4f(255f, 255f, 255f, 255f);
-                prog.RgbaAmbientIn = new Vec3f(255f, 255f, 255f);
-                prog.RgbaGlowIn = new Vec4f(255f, 255f, 255f, 255f);
-                prog.RgbaTint = new Vec4f(255f, 255f, 255f, 255f);
-
-                prog.Tex2D = bTextureId;
-                prog.AlphaTest = 0.001f;
-                prog.ViewMatrix = viewMatrix;
-                prog.Compile();
-            }
-
             float[] modelMat_h = Mat4f.Create();
+            IRenderAPI rpi = capi.Render;
             // rending is based on player position, to translate render target-position from world frame into render frame
             Vec3f posDiff = bPos.ToVec3f() - pEnt.Pos.XYZFloat;
-            Mat4f.Translate(modelMat_h, modelMat_h, posDiff.X, posDiff.Y, posDiff.Z);
+            Mat4f.Translate(modelMat_h, rpi.CameraMatrixOriginf, posDiff.X, posDiff.Y, posDiff.Z);
             Mat4f.Translate(modelMat_h, modelMat_h, 0.5f, 0.5f, 0.5f); // offset by 0.5 since block coordinates are off-set
 
-            prog.Use();
-            prog.ModelMatrix = modelMat_h;
+            wFC.Render(capi, new Matrixf(modelMat_h), 1.6f, frameColor);
 
-            capi.Render.RenderMesh(bMR);
+            // rpi.CameraMatrixOriginf;
+            // Mat4f.RotateY(modelMat_h, modelMat_h, yaw);
+            // Mat4f.
+            // Matrixf a = new(rpi.CameraMatrixOriginf);
+            // // a.
+            // wFC.Render(capi, a, 1.6f, frameColor);
 
-            prog.Stop();
         }
 
         public override void Dispose()
         {
-            bMR?.Dispose();
-            prog?.Dispose();
+            wFC?.Dispose();
         }
 
 
