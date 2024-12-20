@@ -9,8 +9,9 @@ namespace LazySearch
     public class BlockPosRenderer : ModSystem, IRenderer
     {
         private ICoreClientAPI capi;
+        private IRenderAPI rpi;
         private MeshRef mRef = null;
-        private IStandardShaderProgram prog = null;
+        private IShaderProgram prog = null;
         private static readonly List<BlockPos> bPosList = new();
         private readonly int frameColor = ColorUtil.ToRgba(255, 255, 0, 255);
 
@@ -35,6 +36,7 @@ namespace LazySearch
         {
             base.StartClientSide(api);
             capi = api;
+            rpi = capi.Render;
             capi.Event.RegisterRenderer(this, EnumRenderStage.AfterBlit);
         }
 
@@ -76,53 +78,19 @@ namespace LazySearch
 
         private void InitShaderProgram()
         {
-            IRenderAPI rpi = capi.Render;
-
             MeshData data = LineMeshUtil.GetCube(frameColor);
             data.Scale(new Vec3f(1f, 1f, 1f), 0.5f, 0.5f, 0.5f);
-            // data.Flags = new int[data.VerticesCount];
-            // for (int i = 0; i < data.Flags.Length; i++)
-            // {
-            //     data.Flags[i] = 256;
-            // }
-            // data.Flags = new int[24];
-            // for (int l = 0; l < 24; l += 4)
-            // {
-            //     BlockFacing face = BlockFacing.ALLFACES[l / 6];
-            //     data.Flags[l] = face.NormalPackedFlags;
-            //     data.Flags[l + 1] = data.Flags[l];
-            //     data.Flags[l + 2] = data.Flags[l];
-            //     data.Flags[l + 3] = data.Flags[l];
-            // }
-            // byte[] rgba = data.GetRgba();
-            // for (int i = 0; i < rgba.Length; i += 4)
-            // {
-            //     // set color to purple
-            //     rgba[i + 0] = ColorUtil.ColorR(frameColor); // red
-            //     rgba[i + 1] = ColorUtil.ColorG(frameColor); // green
-            //     rgba[i + 2] = ColorUtil.ColorB(frameColor); // blue
-            //     rgba[i + 3] = ColorUtil.ColorA(frameColor); // alpha
-            // }
-            // data.SetRgba(rgba);
+            data.Flags = new int[data.VerticesCount];
+            for (int i = 0; i < data.Flags.Length; i++)
+            {
+                data.Flags[i] = 256;
+            }
+            data.Flags = new int[24];
             mRef = rpi.UploadMesh(data);
 
-            prog = rpi.StandardShader;
+            prog = rpi.GetEngineShader(EnumShaderProgram.Wireframe);
             prog.Use();
-            prog.ViewMatrix = rpi.CameraMatrixOriginf;
-
-            // no lighting effects
-            // Vec4f c = ColorUtil.ToRGBAVec4f(frameColor);//new(255f, 255f, 255f, 255f);
-            // prog.RgbaLightIn = c;
-            // prog.RgbaFogIn = c;
-            // Vec3f asd = new();
-            // _ = ColorUtil.ToRGBVec3f(frameColor, ref asd);
-            // prog.RgbaAmbientIn = asd;//new Vec3f(255f, 255f, 255f);
-            // prog.RgbaGlowIn = c;
-            // prog.RgbaTint = c;
-            // prog.FogMinIn = float.MaxValue;
-            // prog.FogDensityIn = 0f;
-
-            prog.Compile();
+            prog.Uniform("origin", Vec3f.Zero);
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
@@ -143,28 +111,32 @@ namespace LazySearch
             }
 
             prog.Use();
+            prog.Uniform("colorIn", ColorUtil.WhiteArgbVec);
+
             Vec3f plPos = plr.Entity.Pos.XYZFloat;
+            float[] camOrigin = rpi.CameraMatrixOriginf;
             foreach (BlockPos bp in bPosList_local)
             {
-                HighlightBlock(bp?.ToVec3f(), plPos);
+                HighlightBlock(bp?.ToVec3f(), plPos, camOrigin);
             }
+
             prog.Stop();
 
             // reset line width to default value
-            capi.Render.LineWidth = 1.6f;
+            rpi.LineWidth = 1.6f;
         }
 
-        private void HighlightBlock(Vec3f bPos, Vec3f plPos)
+        private void HighlightBlock(Vec3f bPos, Vec3f plPos, float[] camOrigin)
         {
             if (bPos == null) return;
             float[] modelMat_h = Mat4f.Create();
             // rendering is based on player position, to translate render target-position from world frame into render frame
             Vec3f posDiff = bPos - plPos;
-            Mat4f.Translate(modelMat_h, modelMat_h, posDiff.X, posDiff.Y, posDiff.Z);
+            Mat4f.Translate(modelMat_h, camOrigin, posDiff.X, posDiff.Y, posDiff.Z);
 
-            prog.ModelMatrix = modelMat_h;
-            capi.Render.LineWidth = float.Max(1.6f * float.Pow(2f, 6f) / (posDiff.Length() + 0.01f), 1.6f * 0.5f); // reduce line width with distance
-            capi.Render.RenderMesh(mRef);
+            prog.UniformMatrix("modelViewMatrix", modelMat_h);
+            rpi.LineWidth = float.Max(1.6f * float.Pow(2f, 5f) / (posDiff.Length() + 0.01f), 1.6f * 0.25f); // reduce line width with distance
+            rpi.RenderMesh(mRef);
         }
 
         public override void Dispose()
