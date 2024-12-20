@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 using System.Collections.Generic;
+using System;
 
 namespace LazySearch
 {
@@ -53,6 +54,7 @@ namespace LazySearch
         {
             lock (bPosList)
             {
+                // TODO: instead of only keeping the block positions, already build the mesh data here
                 bPosList.Add(bp.Copy());
             }
         }
@@ -89,8 +91,6 @@ namespace LazySearch
             mRef = rpi.UploadMesh(data);
 
             prog = rpi.GetEngineShader(EnumShaderProgram.Wireframe);
-            prog.Use();
-            prog.Uniform("origin", Vec3f.Zero);
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
@@ -112,12 +112,14 @@ namespace LazySearch
 
             prog.Use();
             prog.Uniform("colorIn", ColorUtil.WhiteArgbVec);
+            prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
+            prog.Uniform("origin", Vec3f.Zero);
 
-            Vec3f plPos = plr.Entity.Pos.XYZFloat;
-            float[] camOrigin = rpi.CameraMatrixOriginf;
+            Vec3d plPos = plr.Entity.Pos.XYZ;
+            double[] camOrigin = rpi.CameraMatrixOrigin;
             foreach (BlockPos bp in bPosList_local)
             {
-                HighlightBlock(bp?.ToVec3f(), plPos, camOrigin);
+                HighlightBlock(bp?.ToVec3d(), plPos, camOrigin);
             }
 
             prog.Stop();
@@ -126,16 +128,16 @@ namespace LazySearch
             rpi.LineWidth = 1.6f;
         }
 
-        private void HighlightBlock(Vec3f bPos, Vec3f plPos, float[] camOrigin)
+        private void HighlightBlock(Vec3d bPos, Vec3d plPos, double[] camOrigin)
         {
             if (bPos == null) return;
-            float[] modelMat_h = Mat4f.Create();
+            double[] modelMat_h = Mat4d.Create();
             // rendering is based on player position, to translate render target-position from world frame into render frame
-            Vec3f posDiff = bPos - plPos;
-            Mat4f.Translate(modelMat_h, camOrigin, posDiff.X, posDiff.Y, posDiff.Z);
+            Vec3d posDiff = bPos - plPos;
+            Mat4d.Translate(modelMat_h, camOrigin, posDiff.X, posDiff.Y, posDiff.Z);
 
-            prog.UniformMatrix("modelViewMatrix", modelMat_h);
-            rpi.LineWidth = float.Max(1.6f * float.Pow(2f, 5f) / (posDiff.Length() + 0.01f), 1.6f * 0.25f); // reduce line width with distance
+            prog.UniformMatrix("modelViewMatrix", Array.ConvertAll(modelMat_h, x => (float)x));
+            rpi.LineWidth = float.Max(1.6f * float.Pow(2f, 5f) / (((float)posDiff.Length()) + 0.01f), 1.6f * 0.25f); // reduce line width with distance
             rpi.RenderMesh(mRef);
         }
 

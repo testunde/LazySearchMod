@@ -32,7 +32,7 @@ namespace LazySearch
         }
 
         public static int MaxBlocksToUncover
-        { get; set; } = 100;
+        { get; set; } = 2000;
 
         private static readonly BlockPos spawnPos = new(0, 0, 0);
 
@@ -246,7 +246,7 @@ namespace LazySearch
             capi = api;
             var parsers = api.ChatCommands.Parsers;
 
-            api.ChatCommands.Create("lz_stop").WithDescription("lz_stop: stops the currently running search")
+            api.ChatCommands.Create("lz_st").WithDescription("lz_st: stops the currently running search")
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith((args) => CmdStopSearch(args, false));
 
             api.ChatCommands.Create("lz_cl").WithDescription("lz_cl: clears any visible highlights")
