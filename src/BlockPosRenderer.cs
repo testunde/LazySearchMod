@@ -143,8 +143,10 @@ namespace LazySearch
 
         public override void Dispose()
         {
+            bPosList.Clear();
             mRef?.Dispose();
             prog?.Dispose();
+            base.Dispose();
         }
 
 

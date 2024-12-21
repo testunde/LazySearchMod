@@ -126,6 +126,7 @@ namespace LazySearch
                     }
                     Thread.Sleep(10);
                 }
+                // TODO: fix that "0 blocks found" is printed after interrupting, since the print is queued in the main thread and thus executed after this function
             }
 
             EntityPlayer byEntity = capi.World.Player.Entity;
@@ -265,6 +266,18 @@ namespace LazySearch
         public override bool ShouldLoad(EnumAppSide side)
         {
             return side == EnumAppSide.Client;
+        }
+
+        public override void Dispose()
+        {
+            // stop currently running thread
+            if (searchThread != null && searchThread.IsAlive)
+            {
+                searchThread.Interrupt();
+            }
+            searchThread.Join();
+
+            base.Dispose();
         }
     }
 }
