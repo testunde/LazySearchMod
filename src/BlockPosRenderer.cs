@@ -80,6 +80,7 @@ namespace LazySearch
 
         private void InitShaderProgram()
         {
+            if (mRef != null && !mRef.Disposed) mRef.Dispose();
             MeshData data = LineMeshUtil.GetCube(frameColor);
             data.Scale(new Vec3f(1f, 1f, 1f), 0.5f, 0.5f, 0.5f);
             data.Flags = new int[data.VerticesCount];
@@ -90,6 +91,7 @@ namespace LazySearch
             data.Flags = new int[24];
             mRef = rpi.UploadMesh(data);
 
+            if (prog != null && !prog.Disposed) prog.Dispose();
             prog = rpi.GetEngineShader(EnumShaderProgram.Wireframe);
         }
 
@@ -105,7 +107,7 @@ namespace LazySearch
                 bPosList_local = new(bPosList);
             }
 
-            if (mRef == null || prog == null)
+            if (mRef == null || mRef.Disposed || prog == null || prog.Disposed)
             {
                 InitShaderProgram();
             }
