@@ -34,6 +34,9 @@ namespace LazySearch
         public static int MaxBlocksToUncover
         { get; set; } = 2000;
 
+        public static bool IsDownwardsSearch
+        { get; set; } = false;
+
         private static readonly BlockPos spawnPos = new(0, 0, 0);
 
         private static Thread searchThread = null;
@@ -100,6 +103,18 @@ namespace LazySearch
             return TextCommandResult.Success(LsMsg(outString));
         }
 
+        private TextCommandResult CmdLazySearchDown(TextCommandCallingArgs args)
+        {
+            IsDownwardsSearch = true;
+            return CmdLazySearch(args);
+        }
+
+        private TextCommandResult CmdLazySearchAllDirections(TextCommandCallingArgs args)
+        {
+            IsDownwardsSearch = false;
+            return CmdLazySearch(args);
+        }
+
         private TextCommandResult CmdLazySearch(TextCommandCallingArgs args)
         {
             if (args.ArgCount < 2 || args.ArgCount > 2 || args.Parsers[0].IsMissing || args.Parsers[1].IsMissing)
@@ -131,9 +146,10 @@ namespace LazySearch
 
             EntityPlayer byEntity = capi.World.Player.Entity;
 
-            Vec3i maxWorldPos = capi.World.BlockAccessor.MapSize;
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
             BlockPosRenderer.SetSearchOrigin(playerPos);
+            Vec3i maxWorldPos = capi.World.BlockAccessor.MapSize.Clone();
+            if (IsDownwardsSearch) maxWorldPos.Y = int.Min(maxWorldPos.Y, playerPos.Y + 2); // only search downwards from players head position
 
             MsgPlayer("Starting Lazy search...");
             PrintClient("Player Pos: " + GetGameBlockPos(playerPos).ToString());
@@ -172,8 +188,8 @@ namespace LazySearch
                             for (y = -s; y <= +s; y++)
                             {
                                 y_world = y + playerPos.Y;
-                                valid_block_y = (y == -s || y == +s) &&
-                                    (y_world >= 0) && (y_world <= maxWorldPos.Y);
+                                if (y_world < 0 || y_world >= maxWorldPos.Y) continue;
+                                valid_block_y = (y == -s || y == +s);
                                 for (x = -s; x <= +s; x++)
                                 {
                                     if (Thread.CurrentThread.IsAlive &&
@@ -184,12 +200,12 @@ namespace LazySearch
 
                                     x_world = x + playerPos.X;
                                     valid_block_yx = (valid_block_y || (x == -s || x == +s)) &&
-                                        (x_world >= 0) && (x_world <= maxWorldPos.X);
+                                        (x_world >= 0) && (x_world < maxWorldPos.X);
                                     for (z = -s; z <= +s; z++)
                                     {
                                         z_world = z + playerPos.Z;
                                         valid_block_yxz = (valid_block_yx || (z == -s || z == +s)) &&
-                                            (z_world >= 0) && (z_world <= maxWorldPos.Z);
+                                            (z_world >= 0) && (z_world < maxWorldPos.Z);
 
                                         // any on shell position, do:
                                         if (valid_block_yxz)
@@ -273,7 +289,12 @@ namespace LazySearch
             api.ChatCommands.Create("lz").WithDescription("lz: searches for blocks in the world")
                 .WithArgs(parsers.Int("radius from player position"),
                     parsers.Word("string (word) searched in block path"))
-                .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdLazySearch);
+                .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdLazySearchAllDirections);
+
+            api.ChatCommands.Create("lzd").WithDescription("lzd: searches for blocks in the world, but below the players head")
+                .WithArgs(parsers.Int("radius from player position"),
+                    parsers.Word("string (word) searched in block path"))
+                .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdLazySearchDown);
         }
 
         public override bool ShouldLoad(EnumAppSide side)

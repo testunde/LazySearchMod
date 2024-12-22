@@ -192,6 +192,9 @@ namespace LazySearch
                 Vec3d maxWorldPos = new(capi.World.BlockAccessor.MapSizeX, capi.World.BlockAccessor.MapSizeY,
                     capi.World.BlockAccessor.MapSizeZ);
 
+                // only search downwards from players head position (player == search origin); excluding 0.5 added later
+                if (CommandSystem.IsDownwardsSearch) maxWorldPos.Y = searchOrigin.Y + 2.0 - 0.5;
+
                 // clamp to valid coordinates (lower bound)
                 posDiff.X = Math.Max(0, posDiff.X);
                 posDiff.Y = Math.Max(0, posDiff.Y);
@@ -205,7 +208,6 @@ namespace LazySearch
 
                 // correct for half block offset
                 posDiff.Add(0.5);
-                scale.Add(-1.0);
 
                 double[] modelMat_h = Mat4d.Create();
                 Mat4d.Translate(modelMat_h, camOrigin, posDiff.X, posDiff.Y, posDiff.Z);
@@ -243,8 +245,10 @@ namespace LazySearch
         {
             bPosList.Clear();
             mRefBoundingBox?.Dispose();
+            shellSize = -1;
             mRefHighlight?.Dispose();
             prog?.Dispose();
+
             base.Dispose();
         }
     }
