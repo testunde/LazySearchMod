@@ -130,6 +130,8 @@ namespace LazySearch
             }
 
             EntityPlayer byEntity = capi.World.Player.Entity;
+
+            Vec3i maxWorldPos = capi.World.BlockAccessor.MapSize;
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
 
             MsgPlayer("Starting Lazy search...");
@@ -141,44 +143,53 @@ namespace LazySearch
             string blockWord = (string)args.Parsers[1].GetValue();
             int MaxBlocksToUncover_temp = MaxBlocksToUncover;
 
+            // TODO: try to utilize threading pool for full CPU utilization
             // Create new thread with the search operation
             searchThread = new Thread(() =>
             {
-                // TODO: try to utilize threading pool for full CPU utilization
                 int blocksFound = 0;
-                float searchedRadius = 0.0f;
-
-                BlockPos bp;
-                float tempRadius;
-                Block b;
-                string bName;
+                float maxSearchedRadius = 0.0f;
                 float radius_f = (float)radius;
-                bool valid_block_x, valid_block_xy, valid_block_xyz;
-                int x, y, z;
 
                 try
                 {
                     ((System.Action)(() =>
                     {
+                        BlockPos bp;
+                        float tempRadius;
+                        Block b;
+                        string bName;
+                        int x, y, z;
+                        int x_world, y_world, z_world;
+                        bool valid_block_y, valid_block_yx, valid_block_yxz;
+
                         for (int s = 0; s <= radius; s++) // s="shell"
                         {
-                            for (x = -s; x <= +s; x++)
+                            // first do y, as this coordinate denotes the height and thus will hit the world limits first
+                            for (y = -s; y <= +s; y++)
                             {
-                                valid_block_x = (x == -s || x == +s);
-                                for (y = -s; y <= +s; y++)
+                                y_world = y + playerPos.Y;
+                                valid_block_y = (y == -s || y == +s) &&
+                                    (y_world >= 0) && (y_world <= maxWorldPos.Y);
+                                for (x = -s; x <= +s; x++)
                                 {
                                     if (Thread.CurrentThread.IsAlive &&
-                                        Thread.CurrentThread.ThreadState == ThreadState.Running)
+                                            Thread.CurrentThread.ThreadState == ThreadState.Running)
                                     {
                                         Thread.Sleep(0); // Allow interruption to be processed
                                     }
 
-                                    valid_block_xy = valid_block_x || (y == -s || y == +s);
+                                    x_world = x + playerPos.X;
+                                    valid_block_yx = (valid_block_y || (x == -s || x == +s)) &&
+                                        (x_world >= 0) && (x_world <= maxWorldPos.X);
                                     for (z = -s; z <= +s; z++)
                                     {
-                                        valid_block_xyz = valid_block_xy || (z == -s || z == +s);
-                                        // any on shell
-                                        if (valid_block_xyz)
+                                        z_world = z + playerPos.Z;
+                                        valid_block_yxz = (valid_block_yx || (z == -s || z == +s)) &&
+                                            (z_world >= 0) && (z_world <= maxWorldPos.Z);
+
+                                        // any on shell position, do:
+                                        if (valid_block_yxz)
                                         {
                                             if (blocksFound >= MaxBlocksToUncover_temp)
                                             {
@@ -186,16 +197,15 @@ namespace LazySearch
                                                 return; // return from from lambda-function
                                             }
 
-                                            bp = new BlockPos(x, y, z);
-                                            tempRadius = bp.ToVec3f().Length();
+                                            tempRadius = (new Vec3f(x, y, z)).Length();
                                             if (tempRadius > radius_f)
                                             {
                                                 // skip block in greater distance to player than given radius
                                                 // (as search volume is cube with sidelength 1+2*radius centered at player)
                                                 continue;
                                             }
-                                            searchedRadius = tempRadius;
-                                            bp += playerPos;
+                                            maxSearchedRadius = float.Max(maxSearchedRadius, tempRadius);
+                                            bp = new BlockPos(x_world, y_world, z_world);
                                             b = bacc.GetBlock(bp);
                                             bName = b.Code?.GetName();
                                             if (bName == null)
@@ -223,7 +233,7 @@ namespace LazySearch
                         " (limited by maximal block highlight number, check .lz_mb to change)";
 
                     capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Found " + blocksFound + " blocks with '" +
-                        blockWord + "'. Max search radius: " + searchedRadius.ToString("F1") + "" + maxAmountHit), "");
+                        blockWord + "'. Max search radius: " + maxSearchedRadius.ToString("F1") + "" + maxAmountHit), "");
                 }
                 catch (ThreadAbortException)
                 {

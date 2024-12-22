@@ -97,8 +97,8 @@ namespace LazySearch
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            IClientPlayer plr = capi.World.Player;
-            if (plr.Entity.Properties.Client.Renderer is not EntityShapeRenderer) return;
+            EntityPlayer plr = capi.World.Player.Entity;
+            if (plr.Properties.Client.Renderer is not EntityShapeRenderer) return;
 
             // create copy of list as otherwise it could be modified during iteration
             List<BlockPos> bPosList_local;
@@ -117,12 +117,14 @@ namespace LazySearch
             prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
             prog.Uniform("origin", Vec3f.Zero);
 
-            Vec3d plPos = plr.Entity.Pos.XYZ;
+            Vec3d plPos = plr.Pos.XYZ;
             double[] camOrigin = rpi.CameraMatrixOrigin;
             foreach (BlockPos bp in bPosList_local)
             {
                 HighlightBlock(bp?.ToVec3d(), plPos, camOrigin);
             }
+
+            // TODO: also render "grand" box in which the player is shown the current search shell (respect upper/lower bounds)
 
             prog.Stop();
 
