@@ -133,6 +133,7 @@ namespace LazySearch
 
             Vec3i maxWorldPos = capi.World.BlockAccessor.MapSize;
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
+            BlockPosRenderer.SetSearchOrigin(playerPos);
 
             MsgPlayer("Starting Lazy search...");
             PrintClient("Player Pos: " + GetGameBlockPos(playerPos).ToString());
@@ -165,6 +166,8 @@ namespace LazySearch
 
                         for (int s = 0; s <= radius; s++) // s="shell"
                         {
+                            BlockPosRenderer.SetShellSize(s);
+
                             // first do y, as this coordinate denotes the height and thus will hit the world limits first
                             for (y = -s; y <= +s; y++)
                             {
