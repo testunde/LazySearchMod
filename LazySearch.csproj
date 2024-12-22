@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
+		<TargetFramework>net7</TargetFramework>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<OutputPath>bin\$(Configuration)\Mods\mod</OutputPath>
 	</PropertyGroup>
@@ -43,6 +43,6 @@
 	<Target Name="Package" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
         <Delete Files="$(TargetDir)$(TargetName).pdb" />
         <Delete Files="$(TargetDir)assets/.gitkeep" />
-		<ZipDirectory DestinationFile="bin/$(TargetName)_v1.2.6_v1.20.0.zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
+		<ZipDirectory DestinationFile="bin/$(TargetName)_VS1.20.0-rc.5_$(TargetFramework)_v1.2.6.zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
 	</Target>
 </Project>
