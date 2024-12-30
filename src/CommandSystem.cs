@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.API.MathTools;
 using System.Threading;
+using System.Diagnostics;
 
 
 namespace LazySearch
@@ -57,10 +58,10 @@ namespace LazySearch
             if (searchThread != null && searchThread.IsAlive)
             {
                 searchThread.Interrupt();
-                var startTime = System.DateTime.Now;
+                Stopwatch startTime = Stopwatch.StartNew();
                 while (searchThread.IsAlive)
                 {
-                    if ((System.DateTime.Now - startTime).TotalSeconds > 3.0)
+                    if (startTime.Elapsed.TotalSeconds > 3.0)
                     {
                         return TextCommandResult.Error(silent ? "" : LsMsg("Lazy search interrupt timed out."));
                     }
@@ -132,10 +133,10 @@ namespace LazySearch
             {
                 MsgPlayer("Lazy search already running. Interrupting current search...");
                 searchThread.Interrupt();
-                var startTime = System.DateTime.Now;
+                Stopwatch startTime = Stopwatch.StartNew();
                 while (searchThread.IsAlive)
                 {
-                    if ((System.DateTime.Now - startTime).TotalSeconds > 3.0)
+                    if (startTime.Elapsed.TotalSeconds > 3.0)
                     {
                         return TextCommandResult.Error(LsMsg("Lazy search interrupt timed out."));
                     }
@@ -167,6 +168,7 @@ namespace LazySearch
                 int blocksFound = 0;
                 float maxSearchedRadius = 0.0f;
                 float radius_f = (float)radius;
+                Stopwatch threadRuntime = Stopwatch.StartNew();
 
                 try
                 {
@@ -193,7 +195,7 @@ namespace LazySearch
                                 for (x = -s; x <= +s; x++)
                                 {
                                     if (Thread.CurrentThread.IsAlive &&
-                                            Thread.CurrentThread.ThreadState == ThreadState.Running)
+                                            Thread.CurrentThread.ThreadState == System.Threading.ThreadState.Running)
                                     {
                                         Thread.Sleep(0); // Allow interruption to be processed
                                     }
@@ -252,16 +254,19 @@ namespace LazySearch
                         " (limited by maximal block highlight number, check .lz_mb to change)";
 
                     capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Found " + blocksFound + " blocks with '" +
-                        blockWord + "'. Max search radius: " + maxSearchedRadius.ToString("F1") + "" + maxAmountHit), "");
+                        blockWord + "' in " + threadRuntime.Elapsed.TotalSeconds.ToString("F3") +
+                        " seconds. Max search radius: " + maxSearchedRadius.ToString("F1") + "" + maxAmountHit), "");
                 }
                 catch (ThreadAbortException)
                 {
-                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted. (" +
+                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search aborted after " +
+                        threadRuntime.Elapsed.TotalSeconds.ToString("F3") + " seconds searching. (" +
                         BlockPosRenderer.GetBlockCount() + " Blocks found)"), "");
                 }
                 catch (ThreadInterruptedException)
                 {
-                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted. (" +
+                    capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Lazy search interrupted after " +
+                        threadRuntime.Elapsed.TotalSeconds.ToString("F3") + " seconds searching. (" +
                         BlockPosRenderer.GetBlockCount() + " Blocks found)"), "");
                 }
             });
@@ -274,7 +279,7 @@ namespace LazySearch
         {
             base.StartClientSide(api);
             capi = api;
-            var parsers = api.ChatCommands.Parsers;
+            CommandArgumentParsers parsers = api.ChatCommands.Parsers;
 
             api.ChatCommands.Create("lz_st").WithDescription("lz_st: stops the currently running search")
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith((args) => CmdStopSearch(args, false));
