@@ -66,11 +66,11 @@ namespace LazySearch
             searchOrigin.Set(origin.ToVec3d());
         }
 
-        public static void SetShellSizeWhenBigger(int size)
+        public static void SetShellSize(int size)
         {
             lock (shellSizeLock)
             {
-                if (size > shellSize) shellSize = size;
+                shellSize = size;
             }
         }
 

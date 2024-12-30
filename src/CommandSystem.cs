@@ -58,7 +58,7 @@ namespace LazySearch
         {
             if (searchThread != null && searchThread.IsAlive)
             {
-                searchThread.Interrupt();
+                cts.Cancel();
                 Stopwatch startTime = Stopwatch.StartNew();
                 while (searchThread.IsAlive)
                 {
@@ -133,7 +133,7 @@ namespace LazySearch
             if (searchThread != null && searchThread.IsAlive)
             {
                 MsgPlayer("Lazy search already running. Interrupting current search...");
-                searchThread.Interrupt();
+                cts.Cancel();
                 Stopwatch startTime = Stopwatch.StartNew();
                 while (searchThread.IsAlive)
                 {
@@ -143,7 +143,6 @@ namespace LazySearch
                     }
                     Thread.Sleep(10);
                 }
-                // TODO: fix that "0 blocks found" is printed after interrupting, since the print is queued in the main thread and thus executed after this function
             }
 
             EntityPlayer byEntity = capi.World.Player.Entity;
@@ -175,136 +174,168 @@ namespace LazySearch
                 CancellationToken token = cts.Token;
                 Stopwatch threadRuntime = Stopwatch.StartNew();
 
-                // Spawn one task per shell
-                for (int shell = 0; shell <= radius; shell++)
+                try
                 {
-                    int s = shell; // Capture for lambda
-                    // TODO: prioritize tasks with smaller shell sizes, alternatively execute Thread.Sleep(0) so early queued tasks can be executed before the others are queued
-                    ThreadPool.QueueUserWorkItem(_ =>
+                    int shell;
+                    // Spawn one task per shell
+                    for (shell = 0; shell <= radius; shell++)
                     {
-                        int localBlocksFound = 0;
-                        float localMaxSearchedRadius = 0.0f;
-
-                        try
+                        BlockPosRenderer.SetShellSize(shell);
+                        int s = shell; // Capture for lambda
+                        ThreadPool.QueueUserWorkItem(_ =>
                         {
-                            ((System.Action)(() =>
+                            int localBlocksFound = 0;
+                            float localMaxSearchedRadius = 0.0f;
+
+                            try
                             {
-                                BlockPos bp;
-                                float tempRadius;
-                                Block b;
-                                string bName;
-                                int x, y, z;
-                                int x_world, y_world, z_world;
-                                bool valid_block_y, valid_block_yx, valid_block_yxz;
-
-                                BlockPosRenderer.SetShellSizeWhenBigger(s);
-
-                                // first do y, as this coordinate denotes the height and thus will hit the world limits first
-                                for (y = -s; y <= +s; y++)
+                                ((System.Action)(() =>
                                 {
-                                    y_world = y + playerPos.Y;
-                                    if (y_world < 0 || y_world >= maxWorldPos.Y) continue;
-                                    valid_block_y = (y == -s || y == +s);
-                                    for (x = -s; x <= +s; x++)
+                                    BlockPos bp;
+                                    float tempRadius;
+                                    Block b;
+                                    string bName;
+                                    int x, y, z;
+                                    int x_world, y_world, z_world;
+                                    bool valid_block_y, valid_block_yx, valid_block_yxz;
+
+                                    // first do y, as this coordinate denotes the height and thus will hit the world limits first
+                                    for (y = -s; y <= +s; y++)
                                     {
-                                        x_world = x + playerPos.X;
-                                        valid_block_yx = (valid_block_y || (x == -s || x == +s)) &&
-                                        (x_world >= 0) && (x_world < maxWorldPos.X);
-                                        for (z = -s; z <= +s; z++)
+                                        y_world = y + playerPos.Y;
+                                        if (y_world < 0 || y_world >= maxWorldPos.Y) continue;
+                                        valid_block_y = (y == -s || y == +s);
+                                        for (x = -s; x <= +s; x++)
                                         {
-                                            if (token.IsCancellationRequested) return; // return from from lambda-function
-
-                                            z_world = z + playerPos.Z;
-                                            valid_block_yxz = (valid_block_yx || (z == -s || z == +s)) &&
-                                            (z_world >= 0) && (z_world < maxWorldPos.Z);
-
-                                            // any on shell position, do:
-                                            if (valid_block_yxz)
+                                            x_world = x + playerPos.X;
+                                            valid_block_yx = (valid_block_y || (x == -s || x == +s)) &&
+                                            (x_world >= 0) && (x_world < maxWorldPos.X);
+                                            for (z = -s; z <= +s; z++)
                                             {
-                                                lock (localVarLockObj)
+                                                if (token.IsCancellationRequested) return; // return from from lambda-function
+
+                                                z_world = z + playerPos.Z;
+                                                valid_block_yxz = (valid_block_yx || (z == -s || z == +s)) &&
+                                                (z_world >= 0) && (z_world < maxWorldPos.Z);
+
+                                                // any on shell position, do:
+                                                if (valid_block_yxz)
                                                 {
-                                                    if ((totalBlocksFound + localBlocksFound) >= MaxBlocksToUncover_temp)
+                                                    lock (localVarLockObj)
                                                     {
-                                                        // already hit the maximum, just stop (update shared data beforehand)
-                                                        totalBlocksFound += localBlocksFound;
-                                                        totalMaxSearchedRadius = float.Max(totalMaxSearchedRadius, localMaxSearchedRadius);
-                                                        return; // return from from lambda-function
+                                                        if ((totalBlocksFound + localBlocksFound) >=
+                                                            MaxBlocksToUncover_temp)
+                                                        {
+                                                            // already hit the maximum, just stop (update shared data beforehand)
+                                                            totalBlocksFound += localBlocksFound;
+                                                            totalMaxSearchedRadius = float.Max(totalMaxSearchedRadius,
+                                                                localMaxSearchedRadius);
+                                                            return; // return from from lambda-function
+                                                        }
                                                     }
-                                                }
 
-                                                tempRadius = (new Vec3f(x, y, z)).Length();
-                                                if (tempRadius > radius_f)
-                                                {
-                                                    // skip block in greater distance to player than given radius
-                                                    // (as search volume is cube with sidelength 1+2*radius centered at player)
-                                                    continue;
-                                                }
-                                                localMaxSearchedRadius = float.Max(localMaxSearchedRadius, tempRadius);
-                                                bp = new BlockPos(x_world, y_world, z_world);
-                                                b = bacc.GetBlock(bp);
-                                                bName = b.Code?.GetName();
-                                                if (bName == null)
-                                                {
-                                                    continue;
-                                                }
-                                                if (bName.Contains(blockWord))
-                                                {
-                                                    capi.Event.EnqueueMainThreadTask(() => PrintClient("found '" +
-                                                        bName + "' at: " + GetGameBlockPos(bp).ToString()), "");
-                                                    localBlocksFound++;
+                                                    tempRadius = (new Vec3f(x, y, z)).Length();
+                                                    if (tempRadius > radius_f)
+                                                    {
+                                                        // skip block in greater distance to player than given radius
+                                                        // (as search volume is cube with sidelength 1+2*radius centered at player)
+                                                        continue;
+                                                    }
+                                                    localMaxSearchedRadius = float.Max(localMaxSearchedRadius,
+                                                        tempRadius);
+                                                    bp = new BlockPos(x_world, y_world, z_world);
+                                                    b = bacc.GetBlock(bp);
+                                                    bName = b.Code?.GetName();
+                                                    if (bName == null)
+                                                    {
+                                                        continue;
+                                                    }
+                                                    if (bName.Contains(blockWord))
+                                                    {
+                                                        capi.Event.EnqueueMainThreadTask(() => PrintClient("found '" +
+                                                            bName + "' at: " + GetGameBlockPos(bp).ToString()), "");
+                                                        localBlocksFound++;
 
-                                                    // call BlockPosRenderer
-                                                    BlockPosRenderer.PlotCoord(bp.Copy());
+                                                        // call BlockPosRenderer
+                                                        BlockPosRenderer.PlotCoord(bp.Copy());
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
 
-                                // Update shared data safely
-                                lock (localVarLockObj)
+                                    // Update shared data safely
+                                    lock (localVarLockObj)
+                                    {
+                                        totalBlocksFound += localBlocksFound;
+                                        totalMaxSearchedRadius = float.Max(totalMaxSearchedRadius,
+                                            localMaxSearchedRadius);
+                                    }
+                                }))();
+                            }
+                            catch (ThreadAbortException)
+                            {
+                                capi.Event.EnqueueMainThreadTask(() =>
+                                    MsgPlayer("Lazy search thread aborted (shell #" + s + ")"), "");
+                            }
+                            catch (ThreadInterruptedException)
+                            {
+                                capi.Event.EnqueueMainThreadTask(() =>
+                                    MsgPlayer("Lazy search thread interrupted (shell #" + s + ")"), "");
+                            }
+                            finally
+                            {
+                                countDownEvent.Signal();
+                            }
+                        });
+
+                        // Wait until ThreadPool has capacity before queueing next work item, thus processing smaller shell sizes first
+                        while (ThreadPool.PendingWorkItemCount > 0)
+                        {
+                            lock (localVarLockObj)
+                            {
+                                if ((totalBlocksFound >= MaxBlocksToUncover_temp) || token.IsCancellationRequested)
                                 {
-                                    totalBlocksFound += localBlocksFound;
-                                    totalMaxSearchedRadius = float.Max(totalMaxSearchedRadius, localMaxSearchedRadius);
+                                    // Cancel queuing of further work items
+                                    cts?.Cancel();
+                                    break;
                                 }
-                            }))();
+                            }
+                            Thread.Sleep(1); // Small sleep to prevent busy waiting
                         }
-                        catch (ThreadAbortException)
-                        {
-                            capi.Event.EnqueueMainThreadTask(() =>
-                                MsgPlayer("Lazy search thread aborted (shell #" + s + ")"), "");
-                        }
-                        catch (ThreadInterruptedException)
-                        {
-                            capi.Event.EnqueueMainThreadTask(() =>
-                                MsgPlayer("Lazy search thread interrupted (shell #" + s + ")"), "");
-                        }
-                        finally
-                        {
-                            countDownEvent.Signal();
-                        }
-                    });
-                }
+                        if (token.IsCancellationRequested) break; // break from for loop (iterating over shells)
+                    }
 
-                // Wait for completion
-                try
-                {
+                    // Wait for completion
+                    if (token.IsCancellationRequested)
+                    {
+                        countDownEvent.Signal(radius - shell); // trigger remaining signals to allow finishing
+                    }
                     countDownEvent.Wait();
                 }
                 catch (System.Exception)
                 {
                     cts?.Cancel();
-                    countDownEvent.Wait();
+                    if (countDownEvent.CurrentCount > 0)
+                    {
+                        capi.Event.EnqueueMainThreadTask(() =>
+                            MsgPlayer("Still " + countDownEvent.CurrentCount + " signals are open to be received."), "");
+                    }
+                }
+                finally
+                {
                     cts?.Dispose();
                 }
 
                 capi.Event.EnqueueMainThreadTask(() => PrintClient("Lazy search done."), "");
                 string maxAmountHit = (totalBlocksFound < MaxBlocksToUncover_temp) ? "" :
-                        " (limited by maximal block highlight number, check .lz_mb to change)";
+                        " (limited by maximal block highlight criterion (set to " + MaxBlocksToUncover_temp +
+                        "), check .lz_mb to change)";
 
                 capi.Event.EnqueueMainThreadTask(() => MsgPlayer("Found " + totalBlocksFound + " blocks with '" +
                         blockWord + "' in " + threadRuntime.Elapsed.TotalSeconds.ToString("F3") +
-                        " seconds. Max search radius: " + totalMaxSearchedRadius.ToString("F1") + "" + maxAmountHit), "");
+                        " seconds. Max search radius: " + totalMaxSearchedRadius.ToString("F1") + "" +
+                        maxAmountHit), "");
             });
 
             searchThread.Start();
@@ -317,22 +348,27 @@ namespace LazySearch
             capi = api;
             CommandArgumentParsers parsers = api.ChatCommands.Parsers;
 
-            api.ChatCommands.Create("lz_st").WithDescription("lz_st: stops the currently running search")
+            api.ChatCommands.Create("lz_st")
+                .WithDescription("lz_st: stops the currently running search")
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith((args) => CmdStopSearch(args, false));
 
-            api.ChatCommands.Create("lz_cl").WithDescription("lz_cl: clears any visible highlights")
+            api.ChatCommands.Create("lz_cl")
+                .WithDescription("lz_cl: clears any visible highlights")
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdClearHighlights);
 
-            api.ChatCommands.Create("lz_mb").WithDescription("lz_mb: get/set maximal block-highlights as criterion for searching")
+            api.ChatCommands.Create("lz_mb")
+                .WithDescription("lz_mb: get/set maximal block-highlights as criterion for searching")
                 .WithArgs(parsers.OptionalInt("max blocks to uncover")).RequiresPrivilege(Privilege.chat)
                 .RequiresPlayer().HandleWith(CmdMaximalBlocks);
 
-            api.ChatCommands.Create("lz").WithDescription("lz: searches for blocks in the world")
+            api.ChatCommands.Create("lz")
+                .WithDescription("lz: searches for blocks in the world")
                 .WithArgs(parsers.Int("radius from player position"),
                     parsers.Word("string (word) searched in block path"))
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdLazySearchAllDirections);
 
-            api.ChatCommands.Create("lzd").WithDescription("lzd: searches for blocks in the world, but below the players head")
+            api.ChatCommands.Create("lzd")
+                .WithDescription("lzd: searches for blocks in the world, but below the players head")
                 .WithArgs(parsers.Int("radius from player position"),
                     parsers.Word("string (word) searched in block path"))
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdLazySearchDown);

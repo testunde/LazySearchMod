@@ -3,7 +3,7 @@ A lazy search mod for blocks in VintageStory
 
 ## Development/Building Prerequisites
 - Vintage Story game installation
-- .NET SDK
+- .NET SDK 7.0 (or whatever the current game verison requires currently)
 - IDE: Visual Studio Code with C# extension
 
 ## Environment Variables
