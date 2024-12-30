@@ -100,6 +100,7 @@ namespace LazySearch
         private void InitShaderProgram()
         {
             // mesh data for bounding box
+            if (mRefBoundingBox != null && !mRefBoundingBox.Disposed) mRefBoundingBox.Dispose();
             MeshData mDataBoundingBox = LineMeshUtil.GetCube(frameColorBoundingBox);
             mDataBoundingBox.Scale(new Vec3f(1f, 1f, 1f), 0.5f, 0.5f, 0.5f);
             mDataBoundingBox.Flags = new int[mDataBoundingBox.VerticesCount];
@@ -108,20 +109,21 @@ namespace LazySearch
                 mDataBoundingBox.Flags[i] = 256;
             }
             mDataBoundingBox.Flags = new int[24];
-            if (mRefBoundingBox != null && !mRefBoundingBox.Disposed) mRefBoundingBox.Dispose();
+            mDataBoundingBox.CompactBuffers();
             mRefBoundingBox = rpi.UploadMesh(mDataBoundingBox);
 
             // mesh ref for block highlighting
             if (mRefHighlight != null && !mRefHighlight.Disposed) mRefHighlight.Dispose();
-            MeshData data = LineMeshUtil.GetCube(frameColorHighlight);
-            data.Scale(new Vec3f(1f, 1f, 1f), 0.5f, 0.5f, 0.5f);
-            data.Flags = new int[data.VerticesCount];
-            for (int i = 0; i < data.Flags.Length; i++)
+            MeshData mDataHighlight = LineMeshUtil.GetCube(frameColorHighlight);
+            mDataHighlight.Scale(new Vec3f(1f, 1f, 1f), 0.5f, 0.5f, 0.5f);
+            mDataHighlight.Flags = new int[mDataHighlight.VerticesCount];
+            for (int i = 0; i < mDataHighlight.Flags.Length; i++)
             {
-                data.Flags[i] = 256;
+                mDataHighlight.Flags[i] = 256;
             }
-            data.Flags = new int[24];
-            mRefHighlight = rpi.UploadMesh(data);
+            mDataHighlight.Flags = new int[24];
+            mDataHighlight.CompactBuffers();
+            mRefHighlight = rpi.UploadMesh(mDataHighlight);
 
             // shader program
             if (prog != null && !prog.Disposed) prog.Dispose();
@@ -185,6 +187,7 @@ namespace LazySearch
             }
             if (shellSize_temp >= 0)
             {
+                // TODO: move mesh building into SetShellSize() and only do translation here
                 double shellDiameter = shellSize_temp * 2 + 1;
                 Vec3d scale = new(shellDiameter, shellDiameter, shellDiameter);
                 // rendering is based on player position, to translate render target-position from world frame into render frame
@@ -213,7 +216,7 @@ namespace LazySearch
                 Mat4d.Translate(modelMat_h, camOrigin, posDiff.X, posDiff.Y, posDiff.Z);
                 Mat4d.Scale(modelMat_h, scale.X, scale.Y, scale.Z);
                 prog.UniformMatrix("modelViewMatrix", Array.ConvertAll(modelMat_h, x => (float)x));
-                rpi.LineWidth = getLineWidth(shellSize_temp, 2); // reduce line width with shell size
+                rpi.LineWidth = getLineWidth(shellSize_temp, 2); // reduce line width with shell size (implying a more distance bounding box)
                 rpi.RenderMesh(mRefBoundingBox);
 
                 // draw smaller box indicating search origin
@@ -246,6 +249,7 @@ namespace LazySearch
             bPosList.Clear();
             mRefBoundingBox?.Dispose();
             shellSize = -1;
+            searchOrigin.Mul(0.0);
             mRefHighlight?.Dispose();
             prog?.Dispose();
 
