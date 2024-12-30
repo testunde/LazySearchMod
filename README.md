@@ -16,7 +16,7 @@ Syntax: `/lz <radius from player position> <string (word) searched in block path
 
 Syntax: `/lzd <radius from player position> <string (word) searched in block path>` - searches for blocks in the world, but below the players head
 
-Syntax: `/lz_mb [max blocks to uncover]` - get/set maximal blocks to highlight
+Syntax: `/lz_mb [max blocks to uncover]` - get/set maximal block-highlights as criterion for searching
 
 Syntax: `/lz_cl` - clears any visible highlights
 
