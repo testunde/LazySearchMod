@@ -157,7 +157,7 @@ namespace LazySearch
 
             BlockPosRenderer.ClearBlockPosList();
 
-            IBlockAccessor bacc = capi.World.GetBlockAccessor(false, false, false);
+            IBlockAccessor bacc = capi.World.GetLockFreeBlockAccessor();
             string blockWord = (string)args.Parsers[1].GetValue();
             int MaxBlocksToUncover_temp = MaxBlocksToUncover;
 
