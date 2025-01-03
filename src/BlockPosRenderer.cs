@@ -152,7 +152,7 @@ namespace LazySearch
                 InitShaderProgram();
             }
 
-            Vec3d plPos = plr.Pos.XYZ;
+            Vec3d plPos = plr.CameraPos + plr.CameraPosOffset;
             double[] camOrigin = rpi.CameraMatrixOrigin;
 
             // arm shader program
