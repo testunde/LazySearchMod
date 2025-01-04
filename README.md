@@ -14,7 +14,7 @@ Those env. variables are used in `.csproj` and `launch.json`.
 ## In-Game Usage
 Syntax: `/lz <radius from player position> <string (word) searched in block path>` - searches for blocks in the world
 
-Syntax: `/lzd <radius from player position> <string (word) searched in block path>` - searches for blocks in the world, but below the players head
+Syntax: `/lzd <radius from player position> <string (word) searched in block path> [height above player head = 0]` - searches for blocks in the world, but below the players head (optional starting above player head)
 
 Syntax: `/lz_mb [max blocks to uncover]` - get/set maximal block-highlights as criterion for searching
 

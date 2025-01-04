@@ -4,6 +4,7 @@ using Vintagestory.API.Server;
 using Vintagestory.API.MathTools;
 using System.Threading;
 using System.Diagnostics;
+using System;
 
 
 namespace LazySearch
@@ -35,13 +36,15 @@ namespace LazySearch
         public static int MaxBlocksToUncover
         { get; set; } = 2000;
 
-        public static bool IsDownwardsSearch
-        { get; set; } = false;
+        public static int DownwardsSearch_HeightAbovePlayerHead
+        { get; set; } = int.MinValue;
 
         private static readonly BlockPos spawnPos = new(0, 0, 0);
 
         private static Thread searchThread = null;
         private static CancellationTokenSource cts = null;
+
+        private const int DEFAULT_HIGH_ABOVE_PLAYER_HEAD = 0;
 
         private static BlockPos GetGameBlockPos(BlockPos worldBP)
         {
@@ -107,25 +110,36 @@ namespace LazySearch
 
         private TextCommandResult CmdLazySearchDown(TextCommandCallingArgs args)
         {
-            IsDownwardsSearch = true;
+            DownwardsSearch_HeightAbovePlayerHead = (args.ArgCount >= 3 && !args.Parsers[2].IsMissing) ?
+                ((int)args.Parsers[2].GetValue()) : DEFAULT_HIGH_ABOVE_PLAYER_HEAD; // set to default if not given, as argument is optional
             return CmdLazySearch(args);
         }
 
         private TextCommandResult CmdLazySearchAllDirections(TextCommandCallingArgs args)
         {
-            IsDownwardsSearch = false;
+            DownwardsSearch_HeightAbovePlayerHead = int.MinValue;
             return CmdLazySearch(args);
         }
 
         private TextCommandResult CmdLazySearch(TextCommandCallingArgs args)
         {
-            if (args.ArgCount < 2 || args.ArgCount > 2 || args.Parsers[0].IsMissing || args.Parsers[1].IsMissing)
+            if (args.ArgCount < 2 || args.ArgCount > (DownwardsSearch_HeightAbovePlayerHead == int.MinValue ? 2 : 3) ||
+                args.Parsers[0].IsMissing || args.Parsers[1].IsMissing)
             {
-                return TextCommandResult.Success(LsMsg("Syntax is: .lz <radius> <blockWord>"));
+                if (DownwardsSearch_HeightAbovePlayerHead == int.MinValue)
+                {
+                    return TextCommandResult.Success(LsMsg("Syntax is: .lz <radius> <blockWord>"));
+                }
+                else
+                {
+                    DownwardsSearch_HeightAbovePlayerHead = int.MinValue;
+                    return TextCommandResult.Success(LsMsg("Syntax is: .lzd <radius> <blockWord> [heightAbovePlayerHead]"));
+                }
             }
             int radius = (int)args.Parsers[0].GetValue();
             if (radius <= 0)
             {
+                DownwardsSearch_HeightAbovePlayerHead = int.MinValue;
                 return TextCommandResult.Error(LsMsg("Argument 'maxBlocks' has to be a non-zero positive integer."));
             }
 
@@ -139,6 +153,7 @@ namespace LazySearch
                 {
                     if (startTime.Elapsed.TotalSeconds > 3.0)
                     {
+                        DownwardsSearch_HeightAbovePlayerHead = int.MinValue;
                         return TextCommandResult.Error(LsMsg("Lazy search interrupt timed out."));
                     }
                     Thread.Sleep(10);
@@ -148,11 +163,21 @@ namespace LazySearch
             EntityPlayer byEntity = capi.World.Player.Entity;
 
             BlockPos playerPos = byEntity.Pos.AsBlockPos;
-            BlockPosRenderer.SetSearchOrigin(playerPos);
             Vec3i maxWorldPos = capi.World.BlockAccessor.MapSize.Clone();
-            if (IsDownwardsSearch) maxWorldPos.Y = int.Min(maxWorldPos.Y, playerPos.Y + 2); // only search downwards from players head position
+            if (DownwardsSearch_HeightAbovePlayerHead != int.MinValue)
+            {
+                if (DownwardsSearch_HeightAbovePlayerHead < 0 && int.Abs(DownwardsSearch_HeightAbovePlayerHead) > radius)
+                {
+                    DownwardsSearch_HeightAbovePlayerHead = int.MinValue;
+                    return TextCommandResult.Error(LsMsg("A negative 'height above player head' magnitude has to be smaller than radius."));
+                }
+                // only search downwards from players head position
+                maxWorldPos.Y = Math.Max(
+                    int.Min(maxWorldPos.Y, playerPos.Y + 2 + DownwardsSearch_HeightAbovePlayerHead), 0);
+            }
 
             MsgPlayer("Starting Lazy search...");
+            BlockPosRenderer.SetSearchOrigin(playerPos);
             PrintClient("Player Pos: " + GetGameBlockPos(playerPos).ToString());
 
             BlockPosRenderer.ClearBlockPosList();
@@ -368,9 +393,10 @@ namespace LazySearch
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdLazySearchAllDirections);
 
             api.ChatCommands.Create("lzd")
-                .WithDescription("lzd: searches for blocks in the world, but below the players head")
+                .WithDescription("lzd: searches for blocks in the world, but below the players head (optional starting above player head)")
                 .WithArgs(parsers.Int("radius from player position"),
-                    parsers.Word("string (word) searched in block path"))
+                    parsers.Word("string (word) searched in block path"),
+                    parsers.OptionalInt("height above player head", DEFAULT_HIGH_ABOVE_PLAYER_HEAD))
                 .RequiresPrivilege(Privilege.chat).RequiresPlayer().HandleWith(CmdLazySearchDown);
         }
 

@@ -23,7 +23,7 @@ namespace LazySearch
 
         public double RenderOrder
         {
-            get { return 0.01; }
+            get { return 1e-5; }
         }
 
         public int RenderRange
@@ -196,7 +196,11 @@ namespace LazySearch
                     capi.World.BlockAccessor.MapSizeZ);
 
                 // only search downwards from players head position (player == search origin); excluding 0.5 added later
-                if (CommandSystem.IsDownwardsSearch) maxWorldPos.Y = searchOrigin.Y + 2.0 - 0.5;
+                if (CommandSystem.DownwardsSearch_HeightAbovePlayerHead != int.MinValue)
+                {
+                    maxWorldPos.Y = Math.Max(0, searchOrigin.Y + 2.0 +
+                        CommandSystem.DownwardsSearch_HeightAbovePlayerHead - 0.5);
+                }
 
                 // clamp to valid coordinates (lower bound)
                 posDiff.X = Math.Max(0, posDiff.X);
