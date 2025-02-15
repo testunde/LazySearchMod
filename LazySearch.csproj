@@ -43,6 +43,6 @@
 	<Target Name="Package" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
         <Delete Files="$(TargetDir)$(TargetName).pdb" />
         <Delete Files="$(TargetDir)assets/.gitkeep" />
-		<ZipDirectory DestinationFile="bin/$(TargetName)_VS1.20.0-rc.8_$(TargetFramework)_v1.2.6.zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
+		<ZipDirectory DestinationFile="bin/$(TargetName)_VS1.20.4_$(TargetFramework)_v1.2.7.zip" SourceDirectory="$(TargetDir)" Overwrite="true" />
 	</Target>
 </Project>

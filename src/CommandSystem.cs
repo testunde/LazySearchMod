@@ -408,11 +408,14 @@ namespace LazySearch
         public override void Dispose()
         {
             // stop currently running thread
-            if (searchThread != null && searchThread.IsAlive)
+            if (searchThread != null)
             {
-                searchThread.Interrupt();
+                if (searchThread.IsAlive)
+                {
+                    searchThread.Interrupt();
+                }
+                searchThread.Join();
             }
-            searchThread.Join();
 
             base.Dispose();
         }
